@@ -41,7 +41,9 @@ void enqueueCVMessage(int channel, uint32_t message)
     enqueueSPITransfer(OLED_CODE_FOR_CV, (uint8_t const*)message);
 }
 
-int oledWaitingForMessage    = 256; // 256 means none.
+
+int oledWaitingForMessage    = NOT_WAITING_FOR_MESSAGE; // 256 means none.
+
 int oledPendingMessageToSend = 0;   // 0 means none. The purpose of this variable is to ensure thread safety.
 
 uint16_t oledMessageTimeoutTime;
@@ -58,7 +60,7 @@ sendMessageToPIC:
         bufferPICUart(oledWaitingForMessage);
     }
 
-    else if (oledWaitingForMessage != 256)
+    else if (oledWaitingForMessage != NOT_WAITING_FOR_MESSAGE)
     {
         int16_t howLate = *TCNT[TIMER_SYSTEM_SLOW] - oledMessageTimeoutTime;
         if (howLate >= 0)
@@ -72,7 +74,7 @@ sendMessageToPIC:
 
 void oledSelectingComplete()
 {
-    oledWaitingForMessage                   = 256;
+    oledWaitingForMessage                   = NOT_WAITING_FOR_MESSAGE;
     RSPI(SPI_CHANNEL_OLED_MAIN).SPDCR       = 0x20u;              // 8-bit
     RSPI(SPI_CHANNEL_OLED_MAIN).SPCMD0      = 0b0000011100000010; // 8-bit
     RSPI(SPI_CHANNEL_OLED_MAIN).SPBFCR.BYTE = 0b01100000;         // 0b00100000;

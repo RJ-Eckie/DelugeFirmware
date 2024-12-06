@@ -24,7 +24,7 @@ extern "C" {
  */
 class PIC {
 	static constexpr uint32_t kUartFullSpeedPadsHz = 200000; // 400000 glitches sometimes, especially if you zoom lots
-
+public:
 	enum class Message : uint8_t {
 		NONE = 0,
 
@@ -69,9 +69,10 @@ class PIC {
 		SET_DC_LOW = 250,
 		SET_DC_HIGH = 251,
 
+
+
 	};
 
-public:
 	/**
 	 * @brief The response received from the PIC
 	 */
@@ -83,6 +84,8 @@ public:
 		RESET_SETTINGS = 175,
 		FIRMWARE_VERSION_NEXT = 245,
 		UNKNOWN_OLED_RELATED_COMMAND = 246,
+		SELECT_OLED = 248,
+		DESELECT_OLED = 249,
 		SET_DC_HIGH = 251,
 
 		NEXT_PAD_OFF = 252,

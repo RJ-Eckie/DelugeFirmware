@@ -1197,7 +1197,7 @@ void OLED::freezeWithError(char const* text) {
 	       && (uint16_t)(*TCNT[TIMER_SYSTEM_SLOW] - startTime) < msToSlowTimerCount(50)) {}
 
 	// Wait for PIC to de-select OLED, if it's been doing that.
-	if (oledWaitingForMessage != 256) {
+	if (oledWaitingForMessage != NOT_WAITING_FOR_MESSAGE) {
 		startTime = *TCNT[TIMER_SYSTEM_SLOW];
 		while ((uint16_t)(*TCNT[TIMER_SYSTEM_SLOW] - startTime) < msToSlowTimerCount(50)) {
 			uint8_t value;
@@ -1206,25 +1206,25 @@ void OLED::freezeWithError(char const* text) {
 				break;
 			}
 		}
-		oledWaitingForMessage = 256;
+		oledWaitingForMessage = NOT_WAITING_FOR_MESSAGE;
 	}
 	spiTransferQueueCurrentlySending = false;
 
 	// Select OLED
 	PIC::selectOLED();
 	PIC::flush();
-	oledWaitingForMessage = 248;
+	oledWaitingForMessage = (int) PIC::Response::SELECT_OLED;
 
 	// Wait for selection to be done
 	startTime = *TCNT[TIMER_SYSTEM_SLOW];
 	while ((uint16_t)(*TCNT[TIMER_SYSTEM_SLOW] - startTime) < msToSlowTimerCount(50)) {
-		uint8_t value;
+		PIC::Response value;
 		bool anything = uartGetChar(UART_ITEM_PIC, (char*)&value);
-		if (anything && value == 248) {
+		if (anything && value == PIC::Response::SELECT_OLED) {
 			break;
 		}
 	}
-	oledWaitingForMessage = 256;
+	oledWaitingForMessage = NOT_WAITING_FOR_MESSAGE;
 
 	// Send data via DMA
 	RSPI(SPI_CHANNEL_OLED_MAIN).SPDCR = 0x20u;               // 8-bit
@@ -1245,16 +1245,16 @@ void OLED::freezeWithError(char const* text) {
 		PIC::flush();
 		uartFlushIfNotSending(UART_ITEM_MIDI);
 
-		uint8_t value;
+		PIC::Response value;
 		bool anything = uartGetChar(UART_ITEM_PIC, (char*)&value);
 		if (anything) {
-			if (value == 175) {
+			if (value == PIC::Response::RESET_SETTINGS) {
 				break;
 			}
-			else if (value == 249) {}
+			else if (value == PIC::Response::DESELECT_OLED) {}
 		}
 	}
-	oledWaitingForMessage = 256;
+	oledWaitingForMessage = NOT_WAITING_FOR_MESSAGE;
 	spiTransferQueueCurrentlySending = false;
 
 	clearMainImage();

@@ -665,9 +665,9 @@ void SevenSegment::freezeWithError(char const* text) {
 		PIC::flush();
 		uartFlushIfNotSending(UART_ITEM_MIDI);
 
-		uint8_t value;
+		PIC::Response value;
 		bool anything = uartGetChar(UART_ITEM_PIC, (char*)&value);
-		if (anything && value == 175) {
+		if (anything && (value == PIC::Response::RESET_SETTINGS)) {
 			break;
 		}
 	}

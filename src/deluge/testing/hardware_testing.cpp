@@ -151,7 +151,7 @@ void readInputsForHardwareTest(bool testButtonStates[9][16]) {
 	uint8_t value;
 	bool anything = uartGetChar(UART_ITEM_PIC, (char*)&value);
 	if (anything) {
-		if (value == 252) {
+		if (value == PIC::Response::NEXT_PAD_OFF) {
 			nextIsDepress = true;
 		}
 		else if (value < 180) {

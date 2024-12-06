@@ -31,6 +31,7 @@ void sendSPITransferFromQueue();
 void oledLowLevelTimerCallback();
 void oledRoutine();
 
+static const int NOT_WAITING_FOR_MESSAGE = 256;
 extern int oledWaitingForMessage;
 
 #endif /* DRIVERS_RZA1_OLED_OLED_LOW_LEVEL_H_ */

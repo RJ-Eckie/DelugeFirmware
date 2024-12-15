@@ -4,7 +4,7 @@ include(FetchContent)
 
 FetchContent_Declare(argon
   GIT_REPOSITORY https://github.com/stellar-aria/argon
-  GIT_TAG 724f1be90d8f1a08750d65bda72e51108f1d3619
+  GIT_TAG c19a93d3228d74782c1d17e6bc0b1acb74001aff
 )
 FetchContent_MakeAvailable(argon)
 

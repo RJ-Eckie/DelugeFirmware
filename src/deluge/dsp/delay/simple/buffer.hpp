@@ -169,14 +169,14 @@ public:
 			// disregarded via multiplication by 0 (the fractional coefficients),
 			// leaving us with simply y = x0
 
-			origin.ReadFractionalSIMD(pos).StoreTo(&buffer_[idx + 1]);
+			origin.ReadFractionalSIMD(pos).StoreTo(&buffer_[idx]);
 			pos = pos + step_simd;
 		}
 
 		// tail loop
 		float tail_pos = pos[1]; // same as pos[0] + step
 		for (size_t idx = (size_ & ~0b11); idx < size_; ++idx) {
-			buffer_[idx + 1] = origin.ReadFractional(tail_pos);
+			buffer_[idx] = origin.ReadFractional(tail_pos);
 			tail_pos += step;
 		}
 	}

@@ -55,12 +55,8 @@ public:
 		Percentage<float> nudge; // up to 0.33 (33%)
 
 		// Comparison ops
-		bool operator==(const ChannelConfig& b) const {
-			return mode == b.mode && duration == b.duration && nudge == b.nudge;
-		}
-		bool operator!=(const ChannelConfig& b) const {
-			return mode != b.mode || duration != b.duration || nudge != b.nudge;
-		}
+		bool operator==(const ChannelConfig& b) const = default;
+		bool operator!=(const ChannelConfig& b) const = default;
 	};
 
 	struct Config {
@@ -158,6 +154,8 @@ public:
 			lfo_rate.Next();
 			lfo_filter_depth.Next();
 			dry_wet.Next();
+
+			/** TODO: continue work here */
 		}
 		old_config_ = config_;
 	}

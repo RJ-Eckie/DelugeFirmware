@@ -16,7 +16,7 @@
  */
 #pragma once
 
-#include <arm_neon.h>
+#include <arm_neon_shim.h>
 #include <cstdint>
 
 // signed 31 fractional bits (e.g. one would be 1<<31 but can't be represented)

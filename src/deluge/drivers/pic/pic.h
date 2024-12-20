@@ -172,8 +172,6 @@ public:
 
 	static void requestFirmwareVersion() { send(Message::REQUEST_FIRMWARE_VERSION); }
 
-	static void sendColour(const RGB& colour) { send(colour); }
-
 	static void setRefreshTime(uint8_t time_ms) { send(Message::SET_REFRESH_TIME, time_ms); }
 	static void setDimmerInterval(uint8_t interval) { send(Message::SET_DIMMER_INTERVAL, interval); }
 

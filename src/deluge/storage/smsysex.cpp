@@ -5,6 +5,9 @@
 #include "gui/ui_timer_manager.h"
 #include "hid/display/oled.h"
 #include "hid/display/seven_segment.h"
+#include "hid/led/indicator_leds.h"
+#include "hid/led/pad_leds.h"
+#include "hid/matrix/matrix_driver.h"
 #include "hid/hid_sysex.h"
 #include "io/debug/log.h"
 #include "io/debug/print.h"
@@ -508,6 +511,7 @@ void smSysex::readBlock(MIDICable& cable, JsonDeserializer& reader) {
 	uint32_t addr = 0;
 	uint32_t size = blockBufferMax;
 	int32_t fid = 0;
+	String source;
 
 	auto repSN = reader.getReplySeqNum();
 	reader.match('{');
@@ -523,20 +527,53 @@ void smSysex::readBlock(MIDICable& cable, JsonDeserializer& reader) {
 			if (size > blockBufferMax)
 				size = blockBufferMax;
 		}
+		else if (!strcmp(tagName, "source")) {
+			reader.readTagOrAttributeValueString(&source);
+		}
 		else {
 			reader.exitTag();
 		}
 	}
 	reader.match('}');
 
-	FILdata* fp = entryForFID(fid);
+	FILdata* fp = nullptr;
 	FRESULT errCode = FR_OK;
+	UINT actuallyRead = 0;
+	uint8_t* srcAddr = nullptr;
 
+	// If a source is specified and a fid is not, then
+	// figure out what memory area we will be sending back from.
+	if (fid == 0 && !source.isEmpty()) {
+		uint32_t maxAddr = 0;
+		char const* srcName = source.get();
+		if (!strcmp(srcName, "oled")) {
+			maxAddr = 768;
+			srcAddr = deluge::hid::display::OLED::oledCurrentImage[0];
+		}
+		else if (!strcmp(srcName, "image")) {
+			maxAddr = kDisplayHeight * (kDisplayWidth + kSideBarWidth) * sizeof(RGB);
+			srcAddr = (uint8_t*) &PadLEDs::image;
+		}
+		else if (!strcmp(srcName, "pads")) {
+			maxAddr = (kDisplayWidth + kSideBarWidth) * kDisplayHeight;
+			srcAddr = (uint8_t*) &matrixDriver.padStates;
+		} else {
+			goto doReply;
+		}
+		// limit read to available
+		if ((addr + size) > maxAddr) {
+			size = maxAddr - addr;
+		}
+		srcAddr += addr;
+		goto doReply;
+	}
+
+	fp = entryForFID(fid);
 	if (fp == nullptr) {
 		errCode = FRESULT::FR_NOT_ENABLED;
 	}
-	UINT actuallyRead = 0;
-	uint8_t* srcAddr = (uint8_t*)addr;
+
+	srcAddr = (uint8_t*)addr;
 	if (errCode == FRESULT::FR_OK) {
 		if (!readBlockBuffer && fp) {
 			readBlockBuffer = (uint8_t*)GeneralMemoryAllocator::get().allocLowSpeed(blockBufferMax);
@@ -562,20 +599,23 @@ void smSysex::readBlock(MIDICable& cable, JsonDeserializer& reader) {
 	else {
 		size = 0;
 	}
+
+doReply:
 	startReply(jWriter, reader);
 	jWriter.writeOpeningTag("^read", false, true);
-	jWriter.writeAttribute("fid", fid);
+	if (fid != 0) jWriter.writeAttribute("fid", fid);
 	jWriter.writeAttribute("addr", addr);
 	jWriter.writeAttribute("size", size);
 	jWriter.writeAttribute("err", errCode);
+	if (!source.isEmpty()) jWriter.writeAttribute("source", source.get());
 	jWriter.closeTag(true);
+	appendBlock(srcAddr, size, jWriter);
+	sendMsg(cable, jWriter);
+}
 
+void smSysex::appendBlock(uint8_t* srcAddr, uint32_t size, JsonSerializer &jWriter) {
 	jWriter.writeByte(0); // spacer between Json and encoded block.
-
 	uint8_t working[8];
-	if (size == 0) {
-		D_PRINTLN("Read size 0");
-	}
 	for (uint32_t ix = 0; ix < size; ix += 7) {
 		int pktSize = 7;
 		if (ix + pktSize > size) {
@@ -594,7 +634,6 @@ void smSysex::readBlock(MIDICable& cable, JsonDeserializer& reader) {
 		working[0] = hiBits;
 		jWriter.writeBlock(working, pktSize + 1);
 	}
-	sendMsg(cable, jWriter);
 }
 
 void smSysex::writeBlock(MIDICable& cable, JsonDeserializer& reader) {
@@ -747,6 +786,52 @@ void smSysex::assignSession(MIDICable& cable, JsonDeserializer& reader) {
 	sendMsg(cable, jWriter);
 }
 
+void smSysex::uiState(MIDICable& cable, JsonDeserializer& reader) {
+	char const* tagName;
+	String source;
+	uint32_t size = 0;
+
+	auto repSN = reader.getReplySeqNum();
+	reader.match('{');
+	while (*(tagName = reader.readNextTagOrAttributeName())) {
+		if (!strcmp(tagName, "source")) {
+			reader.readTagOrAttributeValueString(&source);
+		}
+		else {
+			reader.exitTag();
+		}
+	}
+	reader.match('}');
+
+	FRESULT errCode = FR_OK;
+	uint8_t* srcAddr = nullptr;
+
+	char const* srcName = source.get();
+	if (!strcmp(srcName, "oled")) {
+		size = 768;
+		srcAddr = deluge::hid::display::OLED::oledCurrentImage[0];
+	}
+	else if (!strcmp(srcName, "image")) {
+		size = kDisplayHeight * (kDisplayWidth + kSideBarWidth) * sizeof(RGB);
+		srcAddr = (uint8_t*) &PadLEDs::image;
+	}
+	else if (!strcmp(srcName, "pads")) {
+		// We could crunch pad states down to bitmaps at some point?
+			size = (kDisplayWidth + kSideBarWidth) * kDisplayHeight;
+			srcAddr = (uint8_t*) &matrixDriver.padStates;
+	} else {
+		errCode = FRESULT::FR_INVALID_PARAMETER;
+	}
+	startReply(jWriter, reader);
+	jWriter.writeOpeningTag("^ui", false, true);
+	jWriter.writeAttribute("size", size);
+	jWriter.writeAttribute("err", errCode);
+	if (!source.isEmpty()) jWriter.writeAttribute("source", source.get());
+	jWriter.closeTag(true);
+	appendBlock(srcAddr, size, jWriter);
+	sendMsg(cable, jWriter);
+}
+
 void smSysex::doPing(MIDICable& cable, JsonDeserializer& reader) {
 	startReply(jWriter, reader);
 	jWriter.writeOpeningTag("^ping", false, true);
@@ -827,6 +912,10 @@ void smSysex::handleNextSysEx() {
 		}
 		else if (!strcmp(tagName, "session")) {
 			assignSession(de.cable, parser);
+			goto done;
+		}
+		else if (!strcmp(tagName, "ui")) {
+			uiState(de.cable, parser);
 			goto done;
 		}
 		else if (!strcmp(tagName, "ping")) {

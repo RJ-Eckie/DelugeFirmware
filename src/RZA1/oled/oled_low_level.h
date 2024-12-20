@@ -21,7 +21,6 @@
 #include "RZA1/system/r_typedefs.h"
 
 void oledSelectingComplete();
-void sendOledDMA();
 void oledTransferComplete(uint32_t int_sense);
 void oledDeselectionComplete();
 void enqueueCVMessage(int channel, uint32_t message);

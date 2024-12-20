@@ -47,7 +47,6 @@ enum UartItemType {
 
 // Aliases, cos multiple things on same PIC for this device
 #define UART_ITEM_PIC_PADS       UART_ITEM_PIC
-#define UART_ITEM_PIC_INDICATORS UART_ITEM_PIC
 
 // PIC UART buffer sizes - different here on A1 because on A2 we have 3 of them
 #define PIC_TX_BUFFER_SIZE                                                                                             \

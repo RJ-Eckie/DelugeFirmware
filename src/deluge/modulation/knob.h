@@ -21,9 +21,9 @@
 #include "modulation/params/param_descriptor.h"
 #include <cstdint>
 
-class Knob {
-public:
-	Knob() {}
+struct Knob {
+	Knob() = default;
+	virtual ~Knob() = default;
 
 	virtual bool isRelative() = 0;
 	virtual bool is14Bit() = 0;
@@ -31,9 +31,9 @@ public:
 	ParamDescriptor paramDescriptor;
 };
 
-class MIDIKnob : public Knob {
-public:
-	MIDIKnob() {}
+struct MIDIKnob : Knob {
+	MIDIKnob() = default;
+	~MIDIKnob() = default;
 	bool isRelative() override { return relative; }
 	bool is14Bit() override { return (midiInput.noteOrCC == 128); }
 	bool topValueIs127() override { return (midiInput.noteOrCC < 128 && !relative); }
@@ -43,8 +43,9 @@ public:
 	int32_t previousPosition;
 };
 
-class ModKnob : public Knob {
-public:
+struct ModKnob : Knob {
+	~ModKnob() = default;
+
 	bool isRelative() override { return true; }
 	bool is14Bit() override { return false; }
 	bool topValueIs127() override { return false; }

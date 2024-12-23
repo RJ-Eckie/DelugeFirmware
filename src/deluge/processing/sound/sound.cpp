@@ -40,6 +40,7 @@
 #include "model/voice/voice.h"
 #include "model/voice/voice_sample.h"
 #include "model/voice/voice_vector.h"
+#include "modulation/knob.h"
 #include "modulation/params/param.h"
 #include "modulation/params/param_manager.h"
 #include "modulation/params/param_set.h"
@@ -2919,9 +2920,8 @@ void Sound::ensureParamPresetValueWithoutKnobIsZero(ModelStackWithAutoParam* mod
 		}
 	}
 
-	for (int32_t k = 0; k < midiKnobArray.getNumElements(); k++) {
-		MIDIKnob* knob = midiKnobArray.getElement(k);
-		if (knob->paramDescriptor.isSetToParamWithNoSource(modelStack->paramId)) {
+	for (MIDIKnob& knob : midiKnobs) {
+		if (knob.paramDescriptor.isSetToParamWithNoSource(modelStack->paramId)) {
 			return;
 		}
 	}
@@ -2947,9 +2947,8 @@ void Sound::ensureParamPresetValueWithoutKnobIsZeroWithMinimalDetails(ParamManag
 		}
 	}
 
-	for (int32_t k = 0; k < midiKnobArray.getNumElements(); k++) {
-		MIDIKnob* knob = midiKnobArray.getElement(k);
-		if (knob->paramDescriptor.isSetToParamWithNoSource(p)) {
+	for (MIDIKnob& knob : midiKnobs) {
+		if (knob.paramDescriptor.isSetToParamWithNoSource(p)) {
 			return;
 		}
 	}
@@ -3270,9 +3269,8 @@ Error Sound::readFromFile(Deserializer& reader, ModelStackWithModControllable* m
 	doneReadingFromFile();
 
 	// Ensure all MIDI knobs reference correct volume...
-	for (int32_t k = 0; k < midiKnobArray.getNumElements(); k++) {
-		MIDIKnob* knob = midiKnobArray.getElement(k);
-		ensureKnobReferencesCorrectVolume(knob);
+	for (MIDIKnob& knob : midiKnobs) {
+		ensureKnobReferencesCorrectVolume(&knob);
 	}
 
 	return Error::NONE;

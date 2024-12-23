@@ -27,11 +27,13 @@
 #include "model/mod_controllable/ModFXProcessor.h"
 #include "model/mod_controllable/filters/filter_config.h"
 #include "model/mod_controllable/mod_controllable.h"
+#include "modulation/knob.h"
 #include "modulation/lfo.h"
 #include "modulation/midi/midi_knob_array.h"
 #include "modulation/params/param_descriptor.h"
 #include "modulation/params/param_set.h"
 #include "modulation/sidechain/sidechain.h"
+#include "util/containers.h"
 
 class Clip;
 class Knob;
@@ -122,7 +124,7 @@ public:
 
 	SideChain sidechain; // Song doesn't use this, despite extending this class
 
-	MidiKnobArray midiKnobArray;
+	deluge::fast_vector<MIDIKnob> midiKnobs;
 	int32_t postReverbVolumeLastTime{};
 
 protected:

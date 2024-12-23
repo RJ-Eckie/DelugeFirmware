@@ -16,6 +16,7 @@
  */
 
 #include "model/song/song.h"
+#include "definitions.h"
 #include "definitions_cxx.hpp"
 #include "dsp/reverb/reverb.hpp"
 #include "gui/l10n/l10n.h"
@@ -61,6 +62,7 @@
 #include "processing/stem_export/stem_export.h"
 #include "storage/flash_storage.h"
 #include "storage/storage_manager.h"
+#include "util/exceptions.h"
 #include "util/lookuptables/lookuptables.h"
 #include <cstring>
 #include <new>
@@ -3334,14 +3336,17 @@ void Song::replaceInstrument(Instrument* oldOutput, Instrument* newOutput, bool 
 			// - you midi learn a controller to that clip's params
 			// - you then go to change the preset for that clip
 			// - you expect that you can continue controlling the same params for the new preset
-			ModControllableAudio* oldModControllableAudio = (ModControllableAudio*)oldOutput->toModControllable();
-			if (oldModControllableAudio) {
-				int32_t numKnobs = oldModControllableAudio->midiKnobArray.getNumElements();
+			auto* oldModControllableAudio = static_cast<ModControllableAudio*>(oldOutput->toModControllable());
+			if (oldModControllableAudio != nullptr) {
+				int32_t numKnobs = oldModControllableAudio->midiKnobs.size();
 				if (numKnobs) {
-					ModControllableAudio* newModControllableAudio =
-					    (ModControllableAudio*)newOutput->toModControllable();
-					newModControllableAudio->midiKnobArray.cloneFrom(&oldModControllableAudio->midiKnobArray);
-					oldModControllableAudio->midiKnobArray.deleteAtIndex(0, numKnobs);
+					auto& newModControllableAudio = static_cast<ModControllableAudio&>(*newOutput->toModControllable());
+					try {
+						newModControllableAudio.midiKnobs = oldModControllableAudio->midiKnobs; // copy assignment
+					} catch (deluge::exception e) {
+						FREEZE_WITH_ERROR("EXMS");
+					}
+					oldModControllableAudio->midiKnobs.clear();
 					oldModControllableAudio->ensureInaccessibleParamPresetValuesWithoutKnobsAreZero(this);
 				}
 			}

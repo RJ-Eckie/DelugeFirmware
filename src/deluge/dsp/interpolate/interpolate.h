@@ -39,7 +39,7 @@ struct Interpolator {
 	}
 
 	// These are the state buffers
-	buffer_t buffer_l;
-	buffer_t buffer_r;
+	alignas(16) buffer_t buffer_l;
+	alignas(16) buffer_t buffer_r;
 };
 } // namespace deluge::dsp

@@ -125,7 +125,6 @@ public:
 
 	int32_t getDistanceToNextNote(int32_t pos, ModelStackWithNoteRow const* modelStack, bool reversed = false);
 
-	int16_t y; // This has to be at the top
 	bool muted;
 
 	int32_t loopLengthIfIndependent; // 0 means obeying parent

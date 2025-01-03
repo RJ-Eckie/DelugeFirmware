@@ -201,7 +201,7 @@ deleteClipAndGetOut:
 
 	modelStack->setTimelineCounter(newClip);
 
-	for (int32_t i = 0; i < newClip->noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < newClip->noteRows.size(); i++) {
 		NoteRow* noteRow = newClip->noteRows.getElement(i);
 		int32_t noteRowId = newClip->getNoteRowId(noteRow, i);
 		ModelStackWithNoteRow* modelStackWithNoteRow = modelStack->addNoteRow(noteRowId, noteRow);
@@ -231,7 +231,7 @@ void InstrumentClip::increaseLengthWithRepeats(ModelStackWithTimelineCounter* mo
 	    completelyRenderOutIterationDependence ? 0 : (uint32_t)(newLength + (loopLength >> 1)) / (uint32_t)loopLength;
 
 	// Tell all the noteRows
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		int32_t noteRowId = getNoteRowId(thisNoteRow, i);
 
@@ -297,7 +297,7 @@ void InstrumentClip::increaseLengthWithRepeats(ModelStackWithTimelineCounter* mo
 void InstrumentClip::lengthChanged(ModelStackWithTimelineCounter* modelStack, int32_t oldLength, Action* action) {
 
 	if (loopLength < oldLength) {
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 
 			// Only if NoteRow doesn't have independent length set, then trim it and stuff
@@ -322,7 +322,7 @@ void InstrumentClip::lengthChanged(ModelStackWithTimelineCounter* modelStack, in
 // Does this individually for each NoteRow, because they might be different lengths, and some might need repeating while
 // others need chopping.
 void InstrumentClip::repeatOrChopToExactLength(ModelStackWithTimelineCounter* modelStack, int32_t newLength) {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		int32_t oldLengthHere = thisNoteRow->loopLengthIfIndependent;
 		if (!oldLengthHere) {
@@ -377,7 +377,7 @@ void InstrumentClip::repeatOrChopToExactLength(ModelStackWithTimelineCounter* mo
 
 // This only gets called when undoing a "multiply Clip".
 void InstrumentClip::halveNoteRowsWithIndependentLength(ModelStackWithTimelineCounter* modelStack) {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* noteRow = noteRows.getElement(i);
 
 		ModelStackWithNoteRow* modelStackWithNoteRow = modelStack->addNoteRow(getNoteRowId(noteRow, i), noteRow);
@@ -403,7 +403,7 @@ void InstrumentClip::setPos(ModelStackWithTimelineCounter* modelStack, int32_t n
 
 	uint32_t posForParamManagers = useActualPosForParamManagers ? getLivePos() : lastProcessedPos;
 
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 
 		// This function is "supposed" to call setPosForParamManagers() on this InstrumentClip, but instead, we'll do
@@ -533,7 +533,7 @@ Error InstrumentClip::beginLinearRecording(ModelStackWithTimelineCounter* modelS
 void InstrumentClip::setPosForParamManagers(ModelStackWithTimelineCounter* modelStack, bool useActualPos) {
 
 	uint32_t pos = useActualPos ? getLivePos() : lastProcessedPos;
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (thisNoteRow->paramManager.mightContainAutomation()) {
 			ModelStackWithThreeMainThings* modelStackWithThreeMainThings =
@@ -557,7 +557,7 @@ void InstrumentClip::reGetParameterAutomation(ModelStackWithTimelineCounter* mod
 	Clip::reGetParameterAutomation(modelStack);
 
 	uint32_t actualPos = getLivePos();
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (thisNoteRow->paramManager.mightContainAutomation()) {
 			ModelStackWithThreeMainThings* modelStackWithThreeMainThings =
@@ -573,11 +573,11 @@ Error InstrumentClip::transferVoicesToOriginalClipFromThisClone(ModelStackWithTi
 	InstrumentClip* originalClip = (InstrumentClip*)modelStackOriginal->getTimelineCounter();
 
 	if (output->type == OutputType::KIT) {
-		if (noteRows.getNumElements() != originalClip->noteRows.getNumElements()) {
+		if (noteRows.size() != originalClip->noteRows.size()) {
 			return Error::UNSPECIFIED;
 		}
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* clonedNoteRow = noteRows.getElement(i);
 			NoteRow* originalNoteRow = originalClip->noteRows.getElement(i);
 
@@ -590,7 +590,7 @@ Error InstrumentClip::transferVoicesToOriginalClipFromThisClone(ModelStackWithTi
 	}
 
 	else {
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* clonedNoteRow = noteRows.getElement(i);
 			NoteRow* originalNoteRow = originalClip->getNoteRowForYNote(
 			    clonedNoteRow->y); // Might come back NULL cos it doesn't exist - that's ok
@@ -617,11 +617,11 @@ Error InstrumentClip::appendClip(ModelStackWithTimelineCounter* thisModelStack,
 	int32_t whichRepeatThisIs = (uint32_t)loopLength / (uint32_t)otherInstrumentClip->loopLength;
 
 	if (output->type == OutputType::KIT) {
-		if (noteRows.getNumElements() != otherInstrumentClip->noteRows.getNumElements()) {
+		if (noteRows.size() != otherInstrumentClip->noteRows.size()) {
 			return Error::UNSPECIFIED;
 		}
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* otherNoteRow = otherInstrumentClip->noteRows.getElement(i);
 			if (otherNoteRow->loopLengthIfIndependent) {
 				continue; // Skip NoteRows with independent length - they'll take care of themselves.
@@ -641,7 +641,7 @@ Error InstrumentClip::appendClip(ModelStackWithTimelineCounter* thisModelStack,
 	}
 
 	else {
-		for (int32_t i = 0; i < otherInstrumentClip->noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < otherInstrumentClip->noteRows.size(); i++) {
 			NoteRow* otherNoteRow = otherInstrumentClip->noteRows.getElement(i);
 			if (otherNoteRow->loopLengthIfIndependent) {
 				continue; // Skip NoteRows with independent length - they'll take care of themselves.
@@ -696,7 +696,7 @@ bool InstrumentClip::wantsToBeginLinearRecording(Song* song) {
 }
 
 void InstrumentClip::pingpongOccurred(ModelStackWithTimelineCounter* modelStack) {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 
 		if (thisNoteRow->paramManager.containsAnyParamCollectionsIncludingExpression()
@@ -736,7 +736,7 @@ void InstrumentClip::processCurrentPos(ModelStackWithTimelineCounter* modelStack
 		                                            // actually didn't help max stack usage at all somehow...
 		pendingNoteOnList.count = 0;
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 
 			ModelStackWithNoteRow* modelStackWithNoteRow =
@@ -987,7 +987,7 @@ NoteRow* InstrumentClip::getNoteRowOnScreen(int32_t yDisplay, Song* song, int32_
 	// Kit
 	if (output->type == OutputType::KIT) {
 		int32_t i = yDisplay + yScroll;
-		if (i < 0 || i >= noteRows.getNumElements()) {
+		if (i < 0 || i >= noteRows.size()) {
 			return nullptr;
 		}
 		if (getIndex) {
@@ -1016,15 +1016,13 @@ ModelStackWithNoteRow* InstrumentClip::getNoteRowForYNote(int32_t yNote, ModelSt
 
 NoteRow* InstrumentClip::getNoteRowForYNote(int32_t yNote, int32_t* getIndex) {
 
-	int32_t i = noteRows.search(yNote, GREATER_OR_EQUAL);
-	if (i < noteRows.getNumElements()) {
-		NoteRow* noteRow = noteRows.getElement(i);
-		if (noteRow->y == yNote) {
-			if (getIndex) {
-				*getIndex = i;
-			}
-			return noteRow;
+	auto it = noteRows.find(yNote);
+	if (it != noteRows.end()) {
+		auto& [y, noteRow] = *it;
+		if (getIndex) {
+			*getIndex = it;
 		}
+		return noteRow;
 	}
 
 	return nullptr;
@@ -1052,7 +1050,7 @@ ModelStackWithNoteRow* InstrumentClip::getNoteRowForDrum(ModelStackWithTimelineC
 
 NoteRow* InstrumentClip::getNoteRowForDrum(Drum* drum, int32_t* getIndex) {
 
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (thisNoteRow->drum == drum) {
 			if (getIndex) {
@@ -1072,7 +1070,7 @@ ModelStackWithNoteRow* InstrumentClip::getNoteRowForDrumName(ModelStackWithTimel
 	int32_t i;
 	NoteRow* thisNoteRow;
 
-	for (i = 0; i < noteRows.getNumElements(); i++) {
+	for (i = 0; i < noteRows.size(); i++) {
 		thisNoteRow = noteRows.getElement(i);
 		if (thisNoteRow->drum && thisNoteRow->paramManager.containsAnyMainParamCollections()
 		    && thisNoteRow->drum->type == DrumType::SOUND) {
@@ -1147,7 +1145,7 @@ ModelStackWithNoteRow* InstrumentClip::getOrCreateNoteRowForYNote(int32_t yNote,
 // I think you need to check (playbackHandler.isEitherClockActive() && song->isClipActive(thisClip)) before calling
 // this.
 void InstrumentClip::resumePlayback(ModelStackWithTimelineCounter* modelStack, bool mayMakeSound) {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (!thisNoteRow->muted) {
 			int32_t noteRowId = getNoteRowId(thisNoteRow, i);
@@ -1180,7 +1178,7 @@ void InstrumentClip::expectNoFurtherTicks(Song* song, bool actuallySoundChange) 
 	}
 
 	if (output->type == OutputType::KIT) {
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			if (thisNoteRow->drum && thisNoteRow->paramManager.containsAnyParamCollectionsIncludingExpression()) {
 				ModelStackWithThreeMainThings* modelStackWithThreeMainThingsForNoteRow =
@@ -1210,7 +1208,7 @@ void InstrumentClip::expectNoFurtherTicks(Song* song, bool actuallySoundChange) 
 // Stops currently-playing notes by actually sending a note-off right now.
 // Check that we're allowed to make sound before you call this (nowhere does, is that bad?)
 void InstrumentClip::stopAllNotesPlaying(ModelStackWithTimelineCounter* modelStack, bool actuallySoundChange) {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		ModelStackWithNoteRow* modelStackWithNoteRow =
 		    modelStack->addNoteRow(getNoteRowId(thisNoteRow, i), thisNoteRow);
@@ -1228,7 +1226,7 @@ NoteRow* InstrumentClip::createNewNoteRowForYVisual(int32_t yVisual, Song* song)
 NoteRow* InstrumentClip::createNewNoteRowForKit(ModelStackWithTimelineCounter* modelStack, bool atStart,
                                                 int32_t* getIndex) {
 
-	int32_t index = atStart ? 0 : noteRows.getNumElements();
+	int32_t index = atStart ? 0 : noteRows.size();
 
 	Drum* newDrum = ((Kit*)output)->getFirstUnassignedDrum(this);
 
@@ -1268,7 +1266,7 @@ void InstrumentClip::replaceMusicalMode(const ScaleChange& changes, ModelStackWi
 	// TODO: There probably should not be _any_ rows which don't below to the
 	// current scale? FREEZE_WITH_ERROR?
 	MusicalKey key = modelStack->song->key;
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		int8_t degree = key.degreeOf(thisNoteRow->y);
 		if (degree >= 0) {
@@ -1295,7 +1293,7 @@ void InstrumentClip::noteRemovedFromMode(int32_t yNoteWithinOctave, Song* song) 
 		return;
 	}
 
-	for (int32_t i = 0; i < noteRows.getNumElements();) {
+	for (int32_t i = 0; i < noteRows.size();) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 
 		if ((thisNoteRow->y + 120) % 12 == yNoteWithinOctave) {
@@ -1308,7 +1306,7 @@ void InstrumentClip::noteRemovedFromMode(int32_t yNoteWithinOctave, Song* song) 
 }
 
 void InstrumentClip::seeWhatNotesWithinOctaveArePresent(NoteSet& notesWithinOctavePresent, MusicalKey key) {
-	for (int32_t i = 0; i < noteRows.getNumElements();) {
+	for (int32_t i = 0; i < noteRows.size();) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 
 		if (!thisNoteRow->hasNoNotes()) {
@@ -1334,7 +1332,7 @@ void InstrumentClip::transpose(int32_t semitones, ModelStackWithTimelineCounter*
 	ModelStack* modelStackWithSong = setupModelStackWithSong(modelStackMemory, currentSong);
 	output->stopAnyAuditioning(modelStackWithSong);
 
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		thisNoteRow->y += semitones;
 	}
@@ -1370,7 +1368,7 @@ void InstrumentClip::nudgeNotesVertically(int32_t direction, VerticalNudgeType t
 
 	if (!this->isScaleModeClip()) {
 		// Non scale clip, transpose directly by semitone jumps
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			// transpose by semitones or by octave
 			thisNoteRow->y += change;
@@ -1382,7 +1380,7 @@ void InstrumentClip::nudgeNotesVertically(int32_t direction, VerticalNudgeType t
 		// wanting to change a full octave
 		if (std::abs(change) == modelStack->song->key.modeNotes.count()) {
 			int32_t changeInSemitones = (change > 0) ? 12 : -12;
-			for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+			for (int32_t i = 0; i < noteRows.size(); i++) {
 				NoteRow* thisNoteRow = noteRows.getElement(i);
 				// transpose by semitones or by octave
 				thisNoteRow->y += changeInSemitones;
@@ -1391,7 +1389,7 @@ void InstrumentClip::nudgeNotesVertically(int32_t direction, VerticalNudgeType t
 
 		// wanting to change less than an octave
 		else {
-			for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+			for (int32_t i = 0; i < noteRows.size(); i++) {
 				MusicalKey key = modelStack->song->key;
 				NoteRow* thisNoteRow = noteRows.getElement(i);
 				int32_t changeInSemitones = 0;
@@ -1456,7 +1454,7 @@ bool InstrumentClip::renderAsSingleRow(ModelStackWithTimelineCounter* modelStack
 	                        noteRowIndexStart, noteRowIndexEnd, xStart, xEnd, allowBlur, drawRepeats);
 
 	noteRowIndexStart = std::max(noteRowIndexStart, 0_i32);
-	noteRowIndexEnd = std::min(noteRowIndexEnd, noteRows.getNumElements());
+	noteRowIndexEnd = std::min(noteRowIndexEnd, noteRows.size());
 
 	bool rowAllowsNoteTails;
 
@@ -1516,12 +1514,12 @@ int32_t InstrumentClip::getYNoteFromYVisual(int32_t yVisual, Song* song) {
 int32_t InstrumentClip::guessRootNote(Song* song, int32_t previousRoot) {
 	NoteSet notesPresent;
 
-	// It's important this comes before noteRows.getNumElements(), since fetching
+	// It's important this comes before noteRows.size(), since fetching
 	// used notes also deletes empty note rows!
 	seeWhatNotesWithinOctaveArePresent(notesPresent, song->key);
 
 	// If no NoteRows, not much we can do
-	if (noteRows.getNumElements() == 0) {
+	if (noteRows.size() == 0) {
 		return previousRoot;
 	}
 
@@ -1530,7 +1528,7 @@ int32_t InstrumentClip::guessRootNote(Song* song, int32_t previousRoot) {
 		previousRoot += 12;
 	}
 
-	int32_t lowestNote = noteRows.getElement(0)->getNoteCode() % 12;
+	int32_t lowestNote = noteRows.begin()->second.getNoteCode() % 12;
 	if (lowestNote < 0) {
 		lowestNote += 12;
 	}
@@ -1594,7 +1592,7 @@ int32_t InstrumentClip::guessRootNote(Song* song, int32_t previousRoot) {
 }
 
 int32_t InstrumentClip::getNumNoteRows() {
-	return noteRows.getNumElements();
+	return noteRows.size();
 }
 
 Error InstrumentClip::setNonAudioInstrument(Instrument* newInstrument, Song* song, ParamManager* newParamManager) {
@@ -1657,7 +1655,7 @@ void InstrumentClip::prepareToEnterKitMode(Song* song) {
 	}
 
 	// Delete empty NoteRows that aren't onscreen
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 
 		int32_t yDisplay = getYVisualFromYNote(thisNoteRow->y, song) - yScroll;
@@ -1671,8 +1669,8 @@ void InstrumentClip::prepareToEnterKitMode(Song* song) {
 	}
 
 	// Figure out the new scroll value
-	if (noteRows.getNumElements()) {
-		yScroll -= getYVisualFromYNote(noteRows.getElement(0)->y, song);
+	if (noteRows.size()) {
+		yScroll -= getYVisualFromYNote(noteRows.begin()->first, song);
 	}
 	else {
 		yScroll = 0;
@@ -1777,7 +1775,7 @@ Error InstrumentClip::changeInstrument(ModelStackWithTimelineCounter* modelStack
 		kit->resetDrumTempValues();
 
 		// For each NoteRow, see if one of the new Drums has the right name for it
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 
 			// Cycle through the backed up drum names for this NoteRow
@@ -1814,7 +1812,7 @@ Error InstrumentClip::changeInstrument(ModelStackWithTimelineCounter* modelStack
 		                                   // create them a new NoteRow. Sets up patching
 
 		// If changing from a kit to a kit, we may have ended up with 0 NoteRows. We do need to keep at least 1
-		if (!noteRows.getNumElements()) {
+		if (!noteRows.size()) {
 			noteRows.insertNoteRowAtIndex(0);
 		}
 	}
@@ -1870,7 +1868,7 @@ probablyApplyBendRangeMain:
 		if (oldInstrument->type == OutputType::KIT) {
 			prepNoteRowsForExitingKitMode(modelStack->song);
 
-			yScroll += getYVisualFromYNote(noteRows.getElement(0)->y, modelStack->song);
+			yScroll += getYVisualFromYNote(noteRows.begin()->first, modelStack->song);
 		}
 	}
 
@@ -1890,8 +1888,8 @@ void InstrumentClip::deleteEmptyNoteRowsAtEitherEnd(bool onlyIfNoDrum, ModelStac
                                                     bool mustKeepLastOne, bool keepOnesWithMIDIInput) {
 
 	// Prioritize deleting from end of list first, cos this won't mess up scroll
-	int32_t firstToDelete = noteRows.getNumElements();
-	for (int32_t i = noteRows.getNumElements() - 1; i >= mustKeepLastOne; i--) {
+	int32_t firstToDelete = noteRows.size();
+	for (int32_t i = noteRows.size() - 1; i >= mustKeepLastOne; i--) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 
 		// If we're keeping this one, stop searching
@@ -1902,9 +1900,9 @@ void InstrumentClip::deleteEmptyNoteRowsAtEitherEnd(bool onlyIfNoDrum, ModelStac
 		firstToDelete = i;
 	}
 
-	int32_t numToDelete = noteRows.getNumElements() - firstToDelete;
+	int32_t numToDelete = noteRows.size() - firstToDelete;
 	if (numToDelete > 0) {
-		for (int32_t i = firstToDelete; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = firstToDelete; i < noteRows.size(); i++) {
 			NoteRow* noteRow = noteRows.getElement(i);
 			if (noteRow->drum) {
 				int32_t noteRowId = getNoteRowId(noteRow, i);
@@ -1917,7 +1915,7 @@ void InstrumentClip::deleteEmptyNoteRowsAtEitherEnd(bool onlyIfNoDrum, ModelStac
 
 	// Then try deleting from start
 	int32_t firstToKeep = 0;
-	for (int32_t i = 0; i < noteRows.getNumElements() - mustKeepLastOne; i++) {
+	for (int32_t i = 0; i < noteRows.size() - mustKeepLastOne; i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (!possiblyDeleteEmptyNoteRow(thisNoteRow, onlyIfNoDrum, modelStack->song, true, keepOnesWithMIDIInput)) {
 			break;
@@ -1997,7 +1995,7 @@ void InstrumentClip::assignDrumsToNoteRows(ModelStackWithTimelineCounter* modelS
 	// We first need to know whether any NoteRows already have a Drum
 	int32_t firstNoteRowToHaveADrum = -1;
 	Drum* lowestDrumOnscreen = nullptr;
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (thisNoteRow->drum) {
 			firstNoteRowToHaveADrum = i;
@@ -2062,7 +2060,7 @@ insertSomeAtBottom:
 	bool anyNoteRowsRemainingWithoutDrum = false;
 
 	// For any NoteRow without a Drum assigned, give it an unused Drum if there is one
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (!thisNoteRow->drum) {
 
@@ -2109,7 +2107,7 @@ noUnassignedDrumsLeft:
 			}
 
 			// Create the NoteRow
-			int32_t i = noteRows.getNumElements();
+			int32_t i = noteRows.size();
 			NoteRow* newNoteRow = noteRows.insertNoteRowAtIndex(i);
 			if (!newNoteRow) {
 				break;
@@ -2126,7 +2124,7 @@ noUnassignedDrumsLeft:
 void InstrumentClip::unassignAllNoteRowsFromDrums(ModelStackWithTimelineCounter* modelStack,
                                                   bool shouldRememberDrumNames, bool shouldRetainLinksToSounds,
                                                   bool shouldGrabMidiCommands, bool shouldBackUpExpressionParamsToo) {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (thisNoteRow->drum) {
 			if (shouldRememberDrumNames) {
@@ -2161,7 +2159,7 @@ void InstrumentClip::unassignAllNoteRowsFromDrums(ModelStackWithTimelineCounter*
 // Returns error code.
 // Should only call for Kit Clips.
 Error InstrumentClip::undoUnassignmentOfAllNoteRowsFromDrums(ModelStackWithTimelineCounter* modelStack) {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* noteRow = noteRows.getElement(i);
 		if (noteRow->drum && noteRow->drum->type == DrumType::SOUND) {
 
@@ -2489,10 +2487,10 @@ void InstrumentClip::writeDataToFile(Serializer& writer, Song* song) {
 	keyboardState.columnControl.writeToFile(writer);
 	writer.writeClosingTag("columnControls");
 
-	if (noteRows.getNumElements()) {
+	if (noteRows.size()) {
 		writer.writeArrayStart("noteRows");
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			int32_t drumIndex = 65535;
 
@@ -2522,7 +2520,7 @@ ramError:
 someError:
 		// Clear out all NoteRows of phony info stored where their drum pointer would normally go
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			thisNoteRow->drum = nullptr;
 		}
@@ -3031,7 +3029,7 @@ createNewParamManager:
 			int32_t minY = -32768;
 			while (reader.match('{') && *(tagName = reader.readNextTagOrAttributeName())) {
 				if (!strcmp(tagName, "noteRow")) {
-					NoteRow* newNoteRow = noteRows.insertNoteRowAtIndex(noteRows.getNumElements());
+					NoteRow* newNoteRow = noteRows.insertNoteRowAtIndex(noteRows.size());
 					if (!newNoteRow) {
 						goto ramError;
 					}
@@ -3333,7 +3331,7 @@ expressionParam:
 void InstrumentClip::prepNoteRowsForExitingKitMode(Song* song) {
 
 	// If for some reason no NoteRows, just return. This shouldn't ever happen
-	if (noteRows.getNumElements() == 0) {
+	if (noteRows.size() == 0) {
 		return;
 	}
 
@@ -3347,7 +3345,7 @@ void InstrumentClip::prepNoteRowsForExitingKitMode(Song* song) {
 	if (inScaleMode) {
 
 		// See if any NoteRows are a root note
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			if (thisNoteRow->y != -32768 && key.intervalOf(thisNoteRow->y) == 0) {
 				chosenNoteRow = thisNoteRow;
@@ -3360,7 +3358,7 @@ void InstrumentClip::prepNoteRowsForExitingKitMode(Song* song) {
 	// If none found yet, just grab the first one with a "valid" yNote
 	if (!chosenNoteRow) {
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			if (thisNoteRow->y != -32768) {
 
@@ -3392,7 +3390,7 @@ noteRowFailed: {}
 
 	// If still none, just pick the first one
 	else {
-		chosenNoteRow = noteRows.getElement(0);
+		chosenNoteRow = &noteRows.begin()->second;
 		chosenNoteRowIndex = 0;
 useRootNote:
 		chosenNoteRow->y = (song->key.rootNote % 12) + 60; // Just do this even if we're not in key-mode
@@ -3401,7 +3399,7 @@ useRootNote:
 	// Now, give all the other NoteRows yNotes
 	int32_t chosenNoteRowYVisual = song->getYVisualFromYNote(chosenNoteRow->y, inScaleMode);
 
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (i != chosenNoteRowIndex) {
 			thisNoteRow->y = song->getYNoteFromYVisual(chosenNoteRowYVisual - chosenNoteRowIndex + i, inScaleMode);
@@ -3419,7 +3417,7 @@ bool InstrumentClip::deleteSoundsWhichWontSound(Song* song) {
 
 		bool clipIsActive = song->isClipActive(this);
 
-		for (int32_t i = 0; i < noteRows.getNumElements();) {
+		for (int32_t i = 0; i < noteRows.size();) {
 			NoteRow* noteRow = noteRows.getElement(i);
 
 			// If the NoteRow isn't gonna make any more sound...
@@ -3471,17 +3469,19 @@ bool InstrumentClip::deleteSoundsWhichWontSound(Song* song) {
 	}
 }
 
-// Will cause serious problems if the NoteRow doesn't exist in here
-void InstrumentClip::deleteNoteRow(ModelStackWithTimelineCounter* modelStack, int32_t noteRowIndex) {
+void InstrumentClip::deleteNoteRow(ModelStackWithTimelineCounter* modelStack, int32_t i) {
+	auto it = noteRows.begin();
+	std::advance(it, i);
+	deleteNoteRow(modelStack, it->second);
+	noteRows.erase(it);
+}
 
-	NoteRow* noteRow = noteRows.getElement(noteRowIndex);
+void InstrumentClip::stopNoteRow(ModelStackWithTimelineCounter* modelStack, NoteRow& noteRow) {
+	ModelStackWithNoteRow* modelStackWithNoteRow =
+	    modelStack->addNoteRow(getNoteRowId(&noteRow, noteRowIndex), &noteRow);
 
-	ModelStackWithNoteRow* modelStackWithNoteRow = modelStack->addNoteRow(getNoteRowId(noteRow, noteRowIndex), noteRow);
-
-	noteRow->stopCurrentlyPlayingNote(modelStackWithNoteRow);
-
-	noteRow->setDrum(nullptr, (Kit*)output, modelStackWithNoteRow);
-	noteRows.deleteNoteRowAtIndex(noteRowIndex);
+	noteRow.stopCurrentlyPlayingNote(modelStackWithNoteRow);
+	noteRow.setDrum(nullptr, (Kit*)output, modelStackWithNoteRow);
 }
 
 void InstrumentClip::stopAllNotesForMIDIOrCV(ModelStackWithTimelineCounter* modelStack) {
@@ -3504,17 +3504,17 @@ void InstrumentClip::stopAllNotesForMIDIOrCV(ModelStackWithTimelineCounter* mode
 }
 
 int16_t InstrumentClip::getTopYNote() {
-	if (noteRows.getNumElements() == 0) {
+	if (noteRows.empty()) {
 		return 64;
 	}
-	return noteRows.getElement(noteRows.getNumElements() - 1)->y;
+	return noteRows.rbegin()->first; // last y value
 }
 
 int16_t InstrumentClip::getBottomYNote() {
-	if (noteRows.getNumElements() == 0) {
+	if (noteRows.empty()) {
 		return 64;
 	}
-	return noteRows.getElement(0)->y;
+	return noteRows.begin()->first;
 }
 
 uint32_t InstrumentClip::getWrapEditLevel() {
@@ -3571,7 +3571,7 @@ void InstrumentClip::ensureInaccessibleParamPresetValuesWithoutKnobsAreZero(Mode
 		else { // KIT
 
 			SoundDrum* soundDrum = (SoundDrum*)sound;
-			for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+			for (int32_t i = 0; i < noteRows.size(); i++) {
 				NoteRow* thisNoteRow = noteRows.getElement(i);
 				if (thisNoteRow->drum == soundDrum) {
 
@@ -3599,7 +3599,7 @@ int32_t InstrumentClip::getDistanceToNextNote(Note* givenNote, ModelStackWithNot
 	else {
 		distance = 2147483647;
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			int32_t earliestThisRow = thisNoteRow->getDistanceToNextNote(givenNote->pos, modelStack);
 			distance = std::min(earliestThisRow, distance);
@@ -3626,21 +3626,21 @@ int32_t InstrumentClip::getNoteRowId(NoteRow* noteRow, int32_t noteRowIndex) {
 
 NoteRow* InstrumentClip::getNoteRowFromId(int32_t id) {
 	if (output->type == OutputType::KIT) {
-		if (id < 0 || id >= noteRows.getNumElements()) {
+		if (id < 0 || id >= noteRows.size()) {
 			FREEZE_WITH_ERROR("E177");
 		}
-		return noteRows.getElement(id);
+		auto it = noteRows.begin();
+		std::advance(it, id);
+		return &it->second;
 	}
 
-	else {
-		NoteRow* noteRow = getNoteRowForYNote(id);
+	auto& it = noteRows.find(id);
 
-		// Might need to create, possibly if scale/mode changed
-		if (!noteRow) {
-			noteRow = noteRows.insertNoteRowAtY(id);
-		}
-		return noteRow;
+	// Might need to create, possibly if scale/mode changed
+	if (it == noteRows.end()) {
+		it = noteRows.try_emplace(id)->first; // set iterator to where NoteRow was inserted
 	}
+	return &it->second;
 }
 
 bool InstrumentClip::shiftHorizontally(ModelStackWithTimelineCounter* modelStack, int32_t amount, bool shiftAutomation,
@@ -3680,7 +3680,7 @@ bool InstrumentClip::shiftHorizontally(ModelStackWithTimelineCounter* modelStack
 		}
 	}
 
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		int32_t noteRowId = getNoteRowId(thisNoteRow, i);
 		ModelStackWithNoteRow* modelStackWithNoteRow = modelStack->addNoteRow(noteRowId, thisNoteRow);
@@ -3736,7 +3736,7 @@ void InstrumentClip::clear(Action* action, ModelStackWithTimelineCounter* modelS
 	// this clears automations when "affectEntire" is enabled
 	Clip::clear(action, modelStack, clearAutomation, clearSequenceAndMPE);
 
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		ModelStackWithNoteRow* modelStackWithNoteRow =
 		    modelStack->addNoteRow(getNoteRowId(thisNoteRow, i), thisNoteRow);
@@ -3745,12 +3745,12 @@ void InstrumentClip::clear(Action* action, ModelStackWithTimelineCounter* modelS
 
 	// Paul: Note rows were lingering, delete them immediately instead of relying they get deleted along the way
 	// Mark: BayMud immediately had 2 crashes related to missing note rows - E105 and E177
-	// noteRows.deleteNoteRowAtIndex(0, noteRows.getNumElements());
+	// noteRows.deleteNoteRowAtIndex(0, noteRows.size());
 }
 
 bool InstrumentClip::doesProbabilityExist(int32_t apartFromPos, int32_t probability, int32_t secondProbability) {
 
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (thisNoteRow->doesProbabilityExist(apartFromPos, probability, secondProbability)) {
 			return true;
@@ -3761,7 +3761,7 @@ bool InstrumentClip::doesProbabilityExist(int32_t apartFromPos, int32_t probabil
 
 void InstrumentClip::clearArea(ModelStackWithTimelineCounter* modelStack, int32_t startPos, int32_t endPos,
                                Action* action) {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 
 		int32_t noteRowId = getNoteRowId(thisNoteRow, i);
@@ -3816,7 +3816,7 @@ void InstrumentClip::compensateVolumeForResonance(ModelStackWithTimelineCounter*
 
 	if (output->type == OutputType::KIT) {
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			if (thisNoteRow->drum && thisNoteRow->paramManager.containsAnyMainParamCollections()
 			    && thisNoteRow->drum->type == DrumType::SOUND) {
@@ -3830,7 +3830,7 @@ void InstrumentClip::compensateVolumeForResonance(ModelStackWithTimelineCounter*
 }
 
 void InstrumentClip::deleteOldDrumNames() {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		thisNoteRow->deleteOldDrumNames();
 	}
@@ -3909,7 +3909,7 @@ bool InstrumentClip::isEmpty(bool displayPopup) {
 }
 
 bool InstrumentClip::containsAnyNotes() {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (!thisNoteRow->hasNoNotes()) {
 			return true;
@@ -4052,7 +4052,7 @@ void InstrumentClip::getSuggestedParamManager(Clip* newClip, ParamManagerForTime
 	}
 	else {
 		InstrumentClip* newInstrumentClip = (InstrumentClip*)newClip;
-		for (int32_t i = 0; i < newInstrumentClip->noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < newInstrumentClip->noteRows.size(); i++) {
 			NoteRow* noteRow = newInstrumentClip->noteRows.getElement(i);
 			if (noteRow->drum && noteRow->drum->type == DrumType::SOUND && (SoundDrum*)noteRow->drum == sound) {
 				*suggestedParamManager = &noteRow->paramManager;
@@ -4111,7 +4111,7 @@ Error InstrumentClip::claimOutput(ModelStackWithTimelineCounter* modelStack) {
 
 		int32_t noteRowCount = 0;
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 
 			if (!(noteRowCount & 15)) {
@@ -4267,7 +4267,7 @@ haveNoDrum:
 		}
 
 		// Ensure all NoteRows have a NULL Drum pointer
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			thisNoteRow->drum = nullptr;
 		}
@@ -4360,7 +4360,7 @@ void InstrumentClip::finishLinearRecording(ModelStackWithTimelineCounter* modelS
 	// Notes may have been placed right at/past the end of the Clip, usually because one was quantized forwards - and
 	// set to the exact end position - and it wasn't yet known whether to extend the length of the Clip in case the user
 	// cancelled linear recording. Trim them off, and move them to the new Clip if there is one.
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 
 		// All notes should be recorded
@@ -4486,8 +4486,8 @@ ramError:
 	newInstrumentClip->setupAsNewKitClipIfNecessary(modelStackNewClip);
 
 	// If Kit, copy NoteRow colours
-	if (output->type == OutputType::KIT && noteRows.getNumElements() == newInstrumentClip->noteRows.getNumElements()) {
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	if (output->type == OutputType::KIT && noteRows.size() == newInstrumentClip->noteRows.size()) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* oldNoteRow = noteRows.getElement(i);
 			NoteRow* newNoteRow = newInstrumentClip->noteRows.getElement(i);
 
@@ -4511,7 +4511,7 @@ void InstrumentClip::quantizeLengthForArrangementRecording(ModelStackWithTimelin
                                                            int32_t suggestedLength, int32_t alternativeLongerLength) {
 
 	if (alternativeLongerLength) {
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			int32_t numNotes = thisNoteRow->notes.getNumElements();
 			if (numNotes) {
@@ -4665,9 +4665,8 @@ void InstrumentClip::recordNoteOn(ModelStackWithNoteRow* modelStack, int32_t vel
 						// treated individually.
 						if (noteRow->loopLengthIfIndependent != 0) {
 							if (output->type == OutputType::KIT
-							    && noteRows.getNumElements()
-							           != (static_cast<InstrumentClip*>(beingRecordedFromClip))
-							                  ->noteRows.getNumElements()) {
+							    && noteRows.size()
+							           != (static_cast<InstrumentClip*>(beingRecordedFromClip))->noteRows.size()) {
 								error = Error::UNSPECIFIED;
 							}
 
@@ -4870,11 +4869,12 @@ void InstrumentClip::recordNoteOff(ModelStackWithNoteRow* modelStack, int32_t ve
 void InstrumentClip::yDisplayNoLongerAuditioning(int32_t yDisplay, Song* song) {
 	if (output->type == OutputType::KIT) {
 		int32_t noteRowIndex = yDisplay + yScroll;
-		if (noteRowIndex >= 0 && noteRowIndex <= noteRows.getNumElements()) {
-			NoteRow* noteRow = noteRows.getElement(noteRowIndex);
-			if (noteRow->drum) {
-				noteRow->drum->auditioned = false;
-				noteRow->drum->lastMIDIChannelAuditioned = MIDI_CHANNEL_NONE; // So it won't record any more MPE
+		if (noteRowIndex >= 0 && noteRowIndex <= noteRows.size()) {
+			auto it = noteRows.begin();
+			std::advance(it, noteRowIndex) NoteRow& noteRow = it->second;
+			if (noteRow.drum) {
+				noteRow.drum->auditioned = false;
+				noteRow.drum->lastMIDIChannelAuditioned = MIDI_CHANNEL_NONE; // So it won't record any more MPE
 			}
 		}
 	}
@@ -4890,7 +4890,7 @@ void InstrumentClip::yDisplayNoLongerAuditioning(int32_t yDisplay, Song* song) {
 int32_t InstrumentClip::getMaxLength() {
 	int32_t maxLength = loopLength;
 
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		if (thisNoteRow->loopLengthIfIndependent > maxLength) {
 			maxLength = thisNoteRow->loopLengthIfIndependent;
@@ -4901,7 +4901,7 @@ int32_t InstrumentClip::getMaxLength() {
 }
 
 bool InstrumentClip::hasAnyPitchExpressionAutomationOnNoteRows() {
-	for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < noteRows.size(); i++) {
 		NoteRow* thisNoteRow = noteRows.getElement(i);
 		ExpressionParamSet* expressionParams = thisNoteRow->paramManager.getExpressionParamSet();
 		if (expressionParams && expressionParams->params[0].isAutomated()) {
@@ -4919,7 +4919,7 @@ void InstrumentClip::incrementPos(ModelStackWithTimelineCounter* modelStack, int
 
 	if (ticksTilNextNoteRowEvent <= 0) {
 
-		for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < noteRows.size(); i++) {
 			NoteRow* thisNoteRow = noteRows.getElement(i);
 			if (thisNoteRow->hasIndependentPlayPos()) {
 				int32_t movement = noteRowsNumTicksBehindClip;
@@ -4936,6 +4936,6 @@ void InstrumentClip::incrementPos(ModelStackWithTimelineCounter* modelStack, int
 }
 
 /*
-    for (int32_t i = 0; i < noteRows.getNumElements(); i++) {
+    for (int32_t i = 0; i < noteRows.size(); i++) {
         NoteRow* thisNoteRow = noteRows.getElement(i);
 */

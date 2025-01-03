@@ -456,15 +456,12 @@ void StemExport::getLoopLengthOfLongestNotEmptyNoteRow(Clip* clip) {
 	loopLengthToStopStemExport = clip->loopLength;
 
 	if (clip->type == ClipType::INSTRUMENT) {
-		InstrumentClip* instrumentClip = (InstrumentClip*)clip;
-		int32_t totalNumNoteRows = instrumentClip->noteRows.getNumElements();
-		if (totalNumNoteRows) {
+		auto& instrumentClip = static_cast<InstrumentClip&>(*clip);
+		if (!instrumentClip.noteRows.empty()) {
 			// iterate through all the note rows to find the longest one
-			for (int32_t idxNoteRow = 0; idxNoteRow < totalNumNoteRows; ++idxNoteRow) {
-				NoteRow* thisNoteRow = instrumentClip->noteRows.getElement(idxNoteRow);
-				if (thisNoteRow && (thisNoteRow->loopLengthIfIndependent > loopLengthToStopStemExport)
-				    && !thisNoteRow->hasNoNotes()) {
-					loopLengthToStopStemExport = thisNoteRow->loopLengthIfIndependent;
+			for (NoteRow& noteRow : instrumentClip.noteRows | std::views::values) {
+				if (noteRow.loopLengthIfIndependent > loopLengthToStopStemExport && !noteRow.hasNoNotes()) {
+					loopLengthToStopStemExport = noteRow.loopLengthIfIndependent;
 				}
 			}
 		}

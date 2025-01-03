@@ -843,11 +843,13 @@ ModelStackWithThreeMainThings* ModControllableAudio::addNoteRowIndexAndStuff(Mod
 	if (noteRowIndex != -1) {
 		InstrumentClip* clip = (InstrumentClip*)modelStack->getTimelineCounter();
 #if ALPHA_OR_BETA_VERSION
-		if (noteRowIndex >= clip->noteRows.getNumElements()) {
+		if (noteRowIndex >= clip->noteRows.size()) {
 			FREEZE_WITH_ERROR("E406");
 		}
 #endif
-		noteRow = clip->noteRows.getElement(noteRowIndex);
+		auto it = clip->noteRows.begin();
+		std::advance(it, noteRowIndex);
+		noteRow = &it->second;
 		noteRowId = clip->getNoteRowId(noteRow, noteRowIndex);
 		paramManager = &noteRow->paramManager;
 	}

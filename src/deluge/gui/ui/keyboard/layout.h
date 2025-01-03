@@ -95,7 +95,7 @@ protected:
 	inline int32_t getLowestClipNote() { return kLowestKeyboardNote; }
 	inline int32_t getHighestClipNote() {
 		if (isKit()) {
-			return getCurrentInstrumentClip()->noteRows.getNumElements() - 1;
+			return getCurrentInstrumentClip()->noteRows.size() - 1;
 		}
 
 		return kHighestKeyboardNote;
@@ -106,10 +106,12 @@ protected:
 
 		// Get colour offset for kit rows
 		if (getCurrentOutputType() == OutputType::KIT) {
-			if (note >= 0 && note < getCurrentInstrumentClip()->noteRows.getNumElements()) {
-				NoteRow* noteRow = getCurrentInstrumentClip()->noteRows.getElement(note);
-				if (noteRow) {
-					colourOffset = noteRow->getColourOffset(getCurrentInstrumentClip());
+			auto& noteRows = getCurrentInstrumentClip()->noteRows;
+			if (note >= 0 && note < noteRows.size()) {
+				auto it = noteRows.begin();
+				std::advance(it, note); // get the note
+				if (it != noteRows.end()) {
+					colourOffset = it->second.getColourOffset(getCurrentInstrumentClip());
 				}
 			}
 		}

@@ -542,9 +542,9 @@ ActionResult KeyboardScreen::buttonAction(deluge::hid::Button b, bool on, bool i
 					ModelStackWithTimelineCounter* modelStack =
 					    currentSong->setupModelStackWithCurrentClip(modelStackMemory);
 
-					NoteRow* noteRow = getCurrentInstrumentClip()->noteRows.getElement(0);
+					NoteRow& noteRow = getCurrentInstrumentClip()->noteRows.begin()->second;
 
-					ModelStackWithNoteRow* modelStackWithNoteRow = modelStack->addNoteRow(0, noteRow);
+					ModelStackWithNoteRow* modelStackWithNoteRow = modelStack->addNoteRow(0, &noteRow);
 
 					instrumentClipView.enterDrumCreator(modelStackWithNoteRow);
 				}

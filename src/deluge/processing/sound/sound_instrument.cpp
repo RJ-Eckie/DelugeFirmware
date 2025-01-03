@@ -177,7 +177,7 @@ yesTickParamManagerForClip:
 		}
 
 		// Do the ParamManagers of each NoteRow, too
-		for (int32_t i = 0; i < ((InstrumentClip*)activeClip)->noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < ((InstrumentClip*)activeClip)->noteRows.size(); i++) {
 			NoteRow* thisNoteRow = ((InstrumentClip*)activeClip)->noteRows.getElement(i);
 			// No time to call the proper function and do error checking, sorry.
 			ParamCollectionSummary* expressionParamsSummary = &thisNoteRow->paramManager.summaries[0];

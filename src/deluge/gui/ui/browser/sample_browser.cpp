@@ -489,7 +489,7 @@ ActionResult SampleBrowser::buttonAction(deluge::hid::Button b, bool on, bool in
 
 bool SampleBrowser::canImportWholeKit() {
 	return (soundEditor.editingKit() && soundEditor.currentSourceIndex == 0
-	        && (SoundDrum*)getCurrentInstrumentClip()->noteRows.getElement(0)->drum == soundEditor.currentSound
+	        && (SoundDrum*)getCurrentInstrumentClip()->noteRows.begin()->second.drum == soundEditor.currentSound
 	        && (!getCurrentKit()->firstDrum->next));
 }
 

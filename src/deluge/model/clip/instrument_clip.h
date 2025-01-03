@@ -127,7 +127,7 @@ public:
 	LearnedMIDI soundMidiCommand; // This is now handled by the Instrument, but for loading old songs, we need to
 	                              // capture and store this
 
-	NoteRowVector noteRows;
+	deluge::fast_map<int16_t, NoteRow> noteRows; // y value as key
 
 	bool wrapEditing;
 	uint32_t wrapEditLevel{};
@@ -167,7 +167,10 @@ public:
 	Error readFromFile(Deserializer& reader, Song* song) override;
 	void writeDataToFile(Serializer& writer, Song* song) override;
 	void prepNoteRowsForExitingKitMode(Song* song);
+
+	void stopNoteRow(ModelStackWithTimelineCounter* modelStack, NoteRow& noteRow);
 	void deleteNoteRow(ModelStackWithTimelineCounter* modelStack, int32_t i);
+
 	int16_t getTopYNote();
 	int16_t getBottomYNote();
 	uint32_t getWrapEditLevel();

@@ -136,7 +136,7 @@ bool Kit::writeDataToFile(Serializer& writer, Clip* clipForSavingOutputOnly, Son
 	if (clipToTakeDrumOrderFrom) {
 		// First, write Drums in the order of their NoteRows. Remove these drums from our list - we'll re-add them in a
 		// moment, at the start, i.e. in the same order they appear in the file
-		for (int32_t i = 0; i < ((InstrumentClip*)clipToTakeDrumOrderFrom)->noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < ((InstrumentClip*)clipToTakeDrumOrderFrom)->noteRows.size(); i++) {
 			NoteRow* thisNoteRow = ((InstrumentClip*)clipToTakeDrumOrderFrom)->noteRows.getElement(i);
 			if (thisNoteRow->drum) {
 				Drum* drum = thisNoteRow->drum;
@@ -399,7 +399,7 @@ void Kit::loadCrucialAudioFilesOnly() {
 	}
 
 	AudioEngine::logAction("Kit::loadCrucialSamplesOnly");
-	for (int32_t i = 0; i < ((InstrumentClip*)activeClip)->noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < ((InstrumentClip*)activeClip)->noteRows.size(); i++) {
 		NoteRow* thisNoteRow = ((InstrumentClip*)activeClip)->noteRows.getElement(i);
 		if (!thisNoteRow->muted && !thisNoteRow->hasNoNotes() && thisNoteRow->drum) {
 			thisNoteRow->drum->loadAllSamples(true); // Why don't we deal with the error?
@@ -682,7 +682,7 @@ void Kit::offerReceivedCCToLearnedParams(MIDICable& cable, uint8_t channel, uint
 	if (modelStack->timelineCounterIsSet()) {
 		InstrumentClip* clip =
 		    (InstrumentClip*)modelStack->getTimelineCounter(); // May have been changed by call above!
-		for (int32_t i = 0; i < clip->noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < clip->noteRows.size(); i++) {
 			NoteRow* thisNoteRow = clip->noteRows.getElement(i);
 			Drum* thisDrum = thisNoteRow->drum;
 			if (thisDrum && thisDrum->type == DrumType::SOUND) {
@@ -708,7 +708,7 @@ bool Kit::offerReceivedPitchBendToLearnedParams(MIDICable& cable, uint8_t channe
 		                                      // let's make this safe and future proof.
 		InstrumentClip* clip =
 		    (InstrumentClip*)modelStack->getTimelineCounter(); // May have been changed by call above!
-		for (int32_t i = 0; i < clip->noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < clip->noteRows.size(); i++) {
 			NoteRow* thisNoteRow = clip->noteRows.getElement(i);
 			Drum* thisDrum = thisNoteRow->drum;
 			if (thisDrum && thisDrum->type == DrumType::SOUND) {
@@ -799,7 +799,7 @@ void Kit::setupPatching(ModelStackWithTimelineCounter* modelStack) {
 	int32_t count = 0;
 
 	if (clip) {
-		for (int32_t i = 0; i < clip->noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < clip->noteRows.size(); i++) {
 			NoteRow* thisNoteRow = clip->noteRows.getElement(i);
 			if (thisNoteRow->drum && thisNoteRow->drum->type == DrumType::SOUND) {
 
@@ -955,7 +955,7 @@ int32_t Kit::doTickForwardForArp(ModelStack* modelStack, int32_t currentPos) {
 	ModelStackWithTimelineCounter* modelStackWithTimelineCounter = modelStack->addTimelineCounter(activeClip);
 
 	int32_t ticksTilNextArpEvent = 2147483647;
-	for (int32_t i = 0; i < ((InstrumentClip*)activeClip)->noteRows.getNumElements(); i++) {
+	for (int32_t i = 0; i < ((InstrumentClip*)activeClip)->noteRows.size(); i++) {
 		NoteRow* thisNoteRow = ((InstrumentClip*)activeClip)->noteRows.getElement(i);
 		if (thisNoteRow->drum
 		    && thisNoteRow->drum->type == DrumType::SOUND) { // For now, only SoundDrums have Arps, but that's actually
@@ -1024,7 +1024,7 @@ void Kit::getThingWithMostReverb(Sound** soundWithMostReverb, ParamManager** par
 
 	if (activeClip) {
 
-		for (int32_t i = 0; i < ((InstrumentClip*)activeClip)->noteRows.getNumElements(); i++) {
+		for (int32_t i = 0; i < ((InstrumentClip*)activeClip)->noteRows.size(); i++) {
 			NoteRow* thisNoteRow = ((InstrumentClip*)activeClip)->noteRows.getElement(i);
 			if (!thisNoteRow->drum || thisNoteRow->drum->type != DrumType::SOUND) {
 				continue;
@@ -1344,21 +1344,17 @@ void Kit::offerReceivedCC(ModelStackWithTimelineCounter* modelStackWithTimelineC
 }
 /// find the drum matching the noteCode, counting up from 0
 Drum* Kit::getDrumFromNoteCode(InstrumentClip* clip, int32_t noteCode) {
-	Drum* thisDrum = nullptr;
 	// bottom kit noteRowId = 0
 	// default middle C1 note number = 36
 	// noteRowId + 36 = C1 up for kit sounds
 	// this is configurable through the default menu
-	if (noteCode >= 0) {
-		int32_t index = noteCode;
-		if (index < clip->noteRows.getNumElements()) {
-			NoteRow* noteRow = clip->noteRows.getElement(index);
-			if (noteRow) {
-				thisDrum = noteRow->drum;
-			}
-		}
+	if (noteCode < 0 && noteCode >= clip->noteRows.size()) {
+		// out of bounds
+		return nullptr;
 	}
-	return thisDrum;
+	auto it = clip->noteRows.begin();
+	std::advance(it, noteCode);
+	return it->second.drum;
 }
 
 /// for pitch bend received on a channel learnt to a whole clip

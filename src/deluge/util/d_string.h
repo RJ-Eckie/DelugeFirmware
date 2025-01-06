@@ -18,9 +18,11 @@
 #pragma once
 
 #include "definitions_cxx.hpp"
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <ranges>
 #include <string_view>
 
 extern "C" {
@@ -46,7 +48,7 @@ extern const char nothing;
 
 class String {
 public:
-	String() : stringMemory(std::make_shared<std::string>()){};
+	String() : data_(std::make_shared<std::string>()){};
 
 	void clear() { unique().clear(); }
 
@@ -63,46 +65,148 @@ public:
 	bool equals(char const* otherChars) const;
 	bool equalsCaseIrrespective(char const* otherChars) const;
 
-	bool contains(const char* otherChars) const { return stringMemory->contains(otherChars); }
 	bool equals(String* otherString) const {
-		if (stringMemory == otherString->stringMemory) {
+		if (data_ == otherString->data_) {
 			return true; // Works if both lengths are 0, too
 		}
-		if (!stringMemory || !otherString->stringMemory) {
+		if (!data_ || !otherString->data_) {
 			return false; // If just one is empty, then not equal
 		}
 		return equals(otherString->get());
 	}
 
 	bool equalsCaseIrrespective(String* otherString) const {
-		if (stringMemory == otherString->stringMemory) {
+		if (data_ == otherString->data_) {
 			return true; // Works if both lengths are 0, too
 		}
-		if (!stringMemory || !otherString->stringMemory) {
+		if (!data_ || !otherString->data_) {
 			return false; // If just one is empty, then not equal
 		}
 		return equalsCaseIrrespective(otherString->get());
 	}
 
 	char const* get() const {
-		if (!stringMemory) {
+		if (!data_) {
 			return &nothing;
 		}
-		return stringMemory->c_str();
+		return data_->c_str();
 	}
 
-	bool isEmpty() const { return stringMemory->empty(); }
+	bool isEmpty() const { return data_->empty(); }
+
+	///// NEW STUFF
+
+	constexpr String(const char* cstr) { assign(cstr); }
+	constexpr String(std::string_view str) { assign(str); }
+
+	constexpr String& assign(std::string_view str) {
+		if (!data_ || data_.use_count() > 1) {
+			data_ = std::make_shared<std::string>(str);
+		}
+		else {
+			*data_ = str;
+		}
+		return *this;
+	}
+
+	constexpr size_t length() { return data_->length(); }
+
+	// void shorten(size_t length);
+
+	void resize(size_t length) {
+		if (length < data_->length()) {
+			shorten(length);
+		}
+		else {
+			unique().resize(length);
+		}
+	}
+
+	constexpr void insert(size_t pos, const String& str) { unique().insert(pos, str); }
+	constexpr void insert(size_t pos, const std::string& str) { unique().insert(pos, str); }
+	constexpr void insert(size_t pos, std::string_view str) { unique().insert(pos, str); }
+
+	constexpr void append(const String& str) { unique() += *str.data_; }
+	constexpr void append(const std::string& str) { unique() += str; }
+	constexpr void append(std::string_view str) { unique() += str; }
+	constexpr void append(const char* cstr) { unique() += cstr; }
+	constexpr void append(char c) { unique() += c; }
+	void append(int32_t number, int32_t minNumDigits = 1);
+
+	char& front() { return unique().front(); }
+	char& back() { return unique().back(); }
+
+	// Cast operators
+	operator std::string_view() const { return *data_; }
+	explicit operator std::string() { return unique(); }
+
+	/// Subscript operator
+	/// @note this will allocate if the string does not hold ownership
+	constexpr char& operator[](size_t pos) { return unique().operator[](pos); }
+
+	// Appending operators
+	void operator+=(int32_t number) { append(number); }
+	constexpr void operator+=(const String& str) { append(str); }
+	constexpr void operator+=(const std::string& str) { append(str); }
+	constexpr void operator+=(std::string_view str) { append(str); }
+	constexpr void operator+=(const char* cstr) { append(cstr); }
+	constexpr void operator+=(char c) { append(c); }
+
+	// Equality operators
+	constexpr bool operator==(std::string_view other) const { return static_cast<std::string_view>(*this) == other; }
+	constexpr bool operator==(const String& other) const {
+		if ((data_ == other.data_) || (data_->empty() && other.data_->empty())) {
+			return true; // Works if both lengths are 0, too
+		}
+		if (data_->empty() || other.data_->empty()) {
+			return false; // If just one is empty, then not equal
+		}
+		return this->data_ == other.data_;
+	}
+
+	[[nodiscard]] constexpr bool iequals(std::string_view other) const {
+		return std::ranges::all_of(std::views::zip(static_cast<std::string_view>(*data_), other),
+		                           [](auto p) { return std::tolower(p.first) == std::tolower(p.second); });
+	}
+
+	[[nodiscard]] constexpr bool iequals(const char* other) const {
+		return std::ranges::all_of(std::views::zip(static_cast<std::string_view>(*data_), std::string_view{other}),
+		                           [](auto p) { return std::tolower(p.first) == std::tolower(p.second); });
+	}
+
+	[[nodiscard]] constexpr bool iequals(const String& other) const {
+		if ((data_ == other.data_) || (data_->empty() && other.data_->empty())) {
+			return true;
+		}
+		if (data_->empty() || other.data_->empty()) {
+			return false; // If just one is empty, then not equal
+		}
+		return this->iequals(static_cast<std::string_view>(other));
+	}
+
+	[[nodiscard]] int icompare(const String& other) const { return strcasecmp(data_->c_str(), other.data_->c_str()); }
+
+	[[nodiscard]] constexpr bool contains(const String& otherChars) const { return data_->contains(*otherChars.data_); }
+	[[nodiscard]] constexpr bool contains(const std::string& otherChars) const { return data_->contains(otherChars); }
+	[[nodiscard]] constexpr bool contains(std::string_view otherChars) const { return data_->contains(otherChars); }
+	[[nodiscard]] constexpr bool contains(const char* otherChars) const { return data_->contains(otherChars); }
+
+	[[nodiscard]] constexpr bool empty() const { return data_->empty(); }
+
+	constexpr const char* c_str() { return unique().c_str(); }
+
+	constexpr void reserve(size_t res) { unique().reserve(res); }
 
 private:
 	std::string& unique() noexcept(false) {
 		// If any additional reasons, we gotta clone the memory first
-		if (stringMemory.use_count() > 1) {
-			stringMemory = std::make_shared<std::string>(*stringMemory);
+		if (data_.use_count() > 1) {
+			data_ = std::make_shared<std::string>(*data_);
 		}
-		return *stringMemory;
+		return *data_;
 	}
 
-	std::shared_ptr<std::string> stringMemory;
+	std::shared_ptr<std::string> data_;
 };
 
 /// A string buffer with utility functions to append and format contents.

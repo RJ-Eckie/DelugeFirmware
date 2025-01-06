@@ -31,22 +31,22 @@ Error String::set(std::string_view newChars) {
 	}
 
 	// If we're here, new length is not 0
-	if (stringMemory.use_count() > 1) {
-		stringMemory = std::make_shared<std::string>(newChars);
+	if (data_.use_count() > 1) {
+		data_ = std::make_shared<std::string>(newChars);
 	}
 	else {
-		stringMemory->assign(newChars);
+		data_->assign(newChars);
 	}
 	return Error::NONE;
 }
 
 // This one can't fail!
 void String::set(String const* otherString) {
-	stringMemory = otherString->stringMemory;
+	data_ = otherString->data_;
 }
 
 size_t String::getLength() const {
-	return stringMemory->length();
+	return data_->length();
 }
 
 Error String::shorten(int32_t newLength) {
@@ -60,7 +60,7 @@ Error String::shorten(int32_t newLength) {
 }
 
 Error String::concatenate(String* otherString) {
-	if (!stringMemory) {
+	if (!data_) {
 		set(otherString);
 		return Error::NONE;
 	}
@@ -107,12 +107,52 @@ Error String::setChar(char newChar, int32_t pos) {
 }
 
 bool String::equals(char const* otherChars) const {
-	return *stringMemory == otherChars;
+	return *data_ == otherChars;
 }
 
 bool String::equalsCaseIrrespective(char const* otherChars) const {
 	return !strcasecmp(get(), otherChars);
 }
+
+/* void String::shorten(size_t length) {
+    if (data_.use_count() > 1) {
+        size_t suffix = data_->length() - length;
+        auto raw = static_cast<std::string_view>(*data_);
+        raw.remove_suffix(suffix);
+        data_ = std::make_shared<std::string>(raw);
+    }
+    else {
+        data_->resize(length);
+    }
+}
+
+void String::append(int32_t number, int32_t minNumDigits) {
+    char buffer[12];
+    intToString(number, buffer, minNumDigits);
+
+    // Clone if needed
+    if (data_.use_count() > 1) {
+        data_ = std::make_shared<std::string>(data_);
+    }
+
+    *data_ += buffer;
+}
+
+void String::setInt(int32_t number, int32_t minNumDigits) {
+    if (data_.use_count() > 1) {
+        data_ = std::make_shared<std::string>();
+    }
+    else {
+        data_->clear();
+    }
+    data_->reserve(12);
+
+    char buffer[12];
+    intToString(number, buffer, minNumDigits);
+
+    *data_ = buffer;
+}
+ */
 
 /**********************************************************************************************************************\
  * String formatting and parsing functions

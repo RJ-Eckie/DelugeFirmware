@@ -49,6 +49,7 @@
 #include "processing/engines/cv_engine.h"
 #include "processing/sound/sound_instrument.h"
 #include "util/lookuptables/lookuptables.h"
+#include "util/try.h"
 #include <cstring>
 #include <string.h>
 
@@ -201,19 +202,17 @@ bool InstrumentClipMinder::createNewInstrument(OutputType newOutputType, bool is
 
 	bool shouldReplaceWholeInstrument = currentSong->shouldOldOutputBeReplaced(clip);
 
-	String newName;
 	char const* thingName = (newOutputType == OutputType::SYNTH) ? "SYNT" : "KIT";
 	error = Browser::currentDir.set(getInstrumentFolder(newOutputType));
 	if (error != Error::NONE) {
-gotError:
 		display->displayError(error);
 		return false;
 	}
 
-	error = loadInstrumentPresetUI.getUnusedSlot(newOutputType, &newName, thingName);
-	if (error != Error::NONE) {
-		goto gotError;
-	}
+	String newName = D_TRY_CATCH(loadInstrumentPresetUI.getUnusedSlot(newOutputType, thingName), error, {
+		display->displayError(error);
+		return false;
+	});
 
 	if (newName.isEmpty()) {
 		display->displayPopup(deluge::l10n::get(deluge::l10n::String::STRING_FOR_NO_FURTHER_UNUSED_INSTRUMENT_NUMBERS));
@@ -224,7 +223,8 @@ gotError:
 	Instrument* newInstrument = StorageManager::createNewInstrument(newOutputType, &newParamManager);
 	if (!newInstrument) {
 		error = Error::INSUFFICIENT_RAM;
-		goto gotError;
+		display->displayError(error);
+		return false;
 	}
 
 	// Set dirPath.
@@ -233,7 +233,8 @@ gotError:
 		void* toDealloc = dynamic_cast<void*>(newInstrument);
 		newInstrument->~Instrument();
 		delugeDealloc(toDealloc);
-		goto gotError;
+		display->displayError(error);
+		return false;
 	}
 
 	actionLogger.deleteAllLogs(); // Can't undo past this!

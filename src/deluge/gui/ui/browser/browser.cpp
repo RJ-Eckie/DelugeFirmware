@@ -794,7 +794,8 @@ noNumberYet:
 		if (mayDefaultToBrandNewNameOnEntry && !direction) {
 pickBrandNewNameIfNoneNominated:
 			if (enteredText.isEmpty()) {
-				error = getUnusedSlot(OutputType::NONE, &enteredText, "SONG");
+				enteredText =
+				    D_TRY_CATCH(getUnusedSlot(OutputType::NONE, "SONG"), local_error, { error = local_error; });
 				if (error != Error::NONE) {
 					goto gotErrorAfterAllocating;
 				}
@@ -827,25 +828,23 @@ everythingFinalized:
 }
 
 // You must set currentDir before calling this.
-Error Browser::getUnusedSlot(OutputType outputType, String* newName, char const* thingName) {
+std::expected<String, Error> Browser::getUnusedSlot(OutputType outputType, std::string_view thingName) {
 
 	Error error;
+	String newName;
+	String filenameToStartAt;
+	;
 	if (display->haveOLED()) {
-		char filenameToStartAt[6]; // thingName is max 4 chars.
-		strcpy(filenameToStartAt, thingName);
-		strcat(filenameToStartAt, ":");
-		error = readFileItemsFromFolderAndMemory(currentSong, outputType, getThingName(outputType), filenameToStartAt,
-		                                         NULL, false, Availability::ANY, CATALOG_SEARCH_LEFT);
+		filenameToStartAt.set(thingName);
+		filenameToStartAt.concatenate(":");
 	}
 	else {
-		char const* filenameToStartAt = ":"; // Colon is the first character after the digits
-		error = readFileItemsFromFolderAndMemory(currentSong, outputType, getThingName(outputType), filenameToStartAt,
-		                                         NULL, false, Availability::ANY, CATALOG_SEARCH_LEFT);
+		filenameToStartAt.set(":"); // Colon is the first character after the digits
 	}
-
+	error = readFileItemsFromFolderAndMemory(currentSong, outputType, getThingName(outputType), filenameToStartAt.get(),
+	                                         NULL, false, Availability::ANY, CATALOG_SEARCH_LEFT);
 	if (error != Error::NONE) {
-doReturn:
-		return error;
+		return std::unexpected{error};
 	}
 
 	sortFileItems();
@@ -860,7 +859,7 @@ doReturn:
 			if (error != Error::NONE) {
 				goto emptyFileItemsAndReturn;
 			}
-			char const* readingChar = &displayName.get()[strlen(thingName)];
+			char const* readingChar = &displayName.get()[thingName.length()];
 			freeSlotNumber = 0;
 			minNumDigits = 0;
 			while (*readingChar >= '0' && *readingChar <= '9') {
@@ -872,11 +871,11 @@ doReturn:
 			freeSlotNumber++;
 		}
 
-		error = newName->set(thingName);
+		error = newName.set(thingName);
 		if (error != Error::NONE) {
 			goto emptyFileItemsAndReturn;
 		}
-		error = newName->concatenateInt(freeSlotNumber, minNumDigits);
+		error = newName.concatenateInt(freeSlotNumber, minNumDigits);
 	}
 	else {
 		int32_t nextHigherSlotFound = kNumSongSlots; // I think the use of this is a bit deprecated...
@@ -890,7 +889,7 @@ goBackOne:
 		if (i < 0) {
 noMoreToLookAt:
 			if (nextHigherSlotFound <= 0) {
-				newName->clear(); // Indicate no slots available.
+				newName.clear(); // Indicate no slots available.
 				goto emptyFileItemsAndReturn;
 			}
 			freeSlotNumber = 0;
@@ -920,12 +919,15 @@ noMoreToLookAt:
 		}
 
 		// If still here, we found an unused slot.
-		error = newName->setInt(freeSlotNumber);
+		error = newName.setInt(freeSlotNumber);
 	}
 
 emptyFileItemsAndReturn:
 	emptyFileItems();
-	goto doReturn;
+	if (error != Error::NONE) {
+		return std::unexpected{error};
+	}
+	return newName;
 }
 
 void Browser::selectEncoderAction(int8_t offset) {

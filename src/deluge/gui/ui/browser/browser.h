@@ -80,7 +80,7 @@ public:
 	static void emptyFileItems();
 	static void deleteSomeFileItems(int32_t startAt, int32_t stopAt);
 	static void deleteFolderAndDuplicateItems(Availability instrumentAvailabilityRequirement = Availability::ANY);
-	Error getUnusedSlot(OutputType outputType, String* newName, char const* thingName);
+	std::expected<String, Error> getUnusedSlot(OutputType outputType, std::string_view thingName);
 	bool opened() override;
 	void cullSomeFileItems();
 	bool checkFP();

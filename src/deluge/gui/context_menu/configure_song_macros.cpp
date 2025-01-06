@@ -43,7 +43,7 @@ std::string_view ConfigureSongMacros::getTitle() {
 	return l10n::get(STRING_FOR_CONFIGURE_SONG_MACROS_SHORT);
 }
 
-Sized<std::string_view*> ConfigureSongMacros::getOptions() {
+std::span<std::string_view> ConfigureSongMacros::getOptions() {
 	using enum l10n::String;
 
 	if (display->haveOLED()) {

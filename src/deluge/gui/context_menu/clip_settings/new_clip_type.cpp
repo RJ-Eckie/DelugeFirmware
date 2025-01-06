@@ -21,7 +21,7 @@ std::string_view NewClipType::getTitle() {
 	return title;
 }
 
-Sized<std::string_view*> NewClipType::getOptions() {
+std::span<std::string_view> NewClipType::getOptions() {
 	using enum l10n::String;
 	static std::string_view options[] = {
 	    "Audio", // audio

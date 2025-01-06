@@ -2301,7 +2301,7 @@ std::string PlaybackHandler::getTempoStringForOLED(float tempoBPM) {
 	}
 
 	auto precision = (tempoBPM >= 1000 || isExternalClockActive()) ? 0 : 2;
-	deluge::string::fromFloat(tempoBPM, precision);
+	return deluge::string::fromFloat(tempoBPM, precision);
 }
 
 void PlaybackHandler::displayTempoBPM(float tempoBPM) {

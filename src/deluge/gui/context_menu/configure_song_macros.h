@@ -25,7 +25,7 @@ public:
 	ConfigureSongMacros() = default;
 
 	std::string_view getTitle() override;
-	Sized<std::string_view*> getOptions() override;
+	std::span<std::string_view> getOptions() override;
 	bool setupAndCheckAvailability();
 	bool acceptCurrentOption() override;
 	bool canSeeViewUnderneath() override { return true; }

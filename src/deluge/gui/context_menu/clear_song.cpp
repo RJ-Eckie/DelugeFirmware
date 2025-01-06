@@ -39,7 +39,7 @@ std::string_view ClearSong::getTitle() {
 	return l10n::get(STRING_FOR_CLEAR_SONG_QMARK);
 }
 
-Sized<std::string_view*> ClearSong::getOptions() {
+std::span<std::string_view> ClearSong::getOptions() {
 	using enum l10n::String;
 	if (display->haveOLED()) {
 		static std::string_view options[] = {l10n::get(STRING_FOR_OK)};

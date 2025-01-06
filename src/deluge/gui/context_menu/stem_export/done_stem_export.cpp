@@ -33,7 +33,7 @@ std::string_view DoneStemExport::getTitle() {
 	return l10n::get(STRING_FOR_DONE_EXPORT_STEMS);
 }
 
-Sized<std::string_view*> DoneStemExport::getOptions() {
+std::span<std::string_view> DoneStemExport::getOptions() {
 	using enum l10n::String;
 
 	if (display->haveOLED()) {

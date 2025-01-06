@@ -46,7 +46,7 @@ std::string_view AudioInputSelector::getTitle() {
 	return l10n::get(STRING_FOR_AUDIO_SOURCE);
 }
 
-Sized<std::string_view*> AudioInputSelector::getOptions() {
+std::span<std::string_view> AudioInputSelector::getOptions() {
 	using enum l10n::String;
 	static std::string_view options[kNumValues] = {
 	    l10n::get(STRING_FOR_DISABLED),     l10n::get(STRING_FOR_LEFT_INPUT),     l10n::get(STRING_FOR_RIGHT_INPUT),

@@ -32,7 +32,7 @@ std::string_view Kit::getTitle() {
 	return l10n::get(STRING_FOR_SAMPLES);
 }
 
-Sized<std::string_view*> Kit::getOptions() {
+std::span<std::string_view> Kit::getOptions() {
 	using enum l10n::String;
 	static std::string_view options[] = {
 	    l10n::get(STRING_FOR_LOAD_ALL), //<

@@ -44,7 +44,7 @@ std::string_view MidiLearnMode::getTitle() {
 	return l10n::get(STRING_FOR_MIDI_LEARN);
 }
 
-Sized<std::string_view*> MidiLearnMode::getOptions() {
+std::span<std::string_view> MidiLearnMode::getOptions() {
 	using enum l10n::String;
 
 	if (display->haveOLED()) {

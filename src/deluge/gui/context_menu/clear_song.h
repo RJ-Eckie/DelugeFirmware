@@ -28,7 +28,7 @@ public:
 
 	std::string_view getTitle() override;
 
-	Sized<std::string_view*> getOptions() override;
+	std::span<std::string_view> getOptions() override;
 	bool acceptCurrentOption() override;
 };
 

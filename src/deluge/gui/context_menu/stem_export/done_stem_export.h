@@ -24,7 +24,7 @@ class DoneStemExport final : public ContextMenu {
 public:
 	DoneStemExport() = default;
 
-	Sized<std::string_view*> getOptions() override;
+	std::span<std::string_view> getOptions() override;
 	bool acceptCurrentOption() override;
 	bool canSeeViewUnderneath() override { return true; }
 

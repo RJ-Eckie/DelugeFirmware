@@ -31,7 +31,7 @@ std::string_view SaveSongOrInstrument::getTitle() {
 	return l10n::get(STRING_FOR_OPTIONS);
 }
 
-Sized<std::string_view*> SaveSongOrInstrument::getOptions() {
+std::span<std::string_view> SaveSongOrInstrument::getOptions() {
 	using enum l10n::String;
 	static std::string_view options[] = {
 	    l10n::get(STRING_FOR_COLLECT_MEDIA), //<

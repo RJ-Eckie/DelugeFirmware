@@ -29,15 +29,15 @@ std::string_view OverwriteFile::getTitle() {
 	return l10n::get(STRING_FOR_OVERWRITE_QMARK);
 }
 
-Sized<std::string_view*> OverwriteFile::getOptions() {
+std::span<std::string_view> OverwriteFile::getOptions() {
 	using enum l10n::String;
 	if (display->haveOLED()) {
 		static std::string_view options[] = {l10n::get(STRING_FOR_OK)};
-		return {.value = options, .size = 1};
+		return {options, 1};
 	}
 	else {
 		static std::string_view options[] = {l10n::get(STRING_FOR_OVERWRITE)};
-		return {.value = options, .size = 1};
+		return {options, 1};
 	}
 }
 

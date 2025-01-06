@@ -24,7 +24,7 @@ class DeleteFile final : public ContextMenuForSaving {
 public:
 	DeleteFile() = default;
 
-	Sized<std::string_view*> getOptions() override;
+	std::span<std::string_view> getOptions() override;
 	bool acceptCurrentOption() override;
 
 	std::string_view getTitle() override;

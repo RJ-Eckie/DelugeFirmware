@@ -34,7 +34,7 @@ std::string_view CancelStemExport::getTitle() {
 	return l10n::get(STRING_FOR_STOP_EXPORT_STEMS_QMARK);
 }
 
-Sized<std::string_view*> CancelStemExport::getOptions() {
+std::span<std::string_view> CancelStemExport::getOptions() {
 	using enum l10n::String;
 
 	if (display->haveOLED()) {

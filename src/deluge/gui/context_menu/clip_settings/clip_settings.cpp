@@ -18,7 +18,7 @@ std::string_view ClipSettingsMenu::getTitle() {
 	return title;
 }
 
-Sized<std::string_view*> ClipSettingsMenu::getOptions() {
+std::span<std::string_view> ClipSettingsMenu::getOptions() {
 	using enum l10n::String;
 	if (clip->type == ClipType::AUDIO) {
 		static std::string_view options[] = {

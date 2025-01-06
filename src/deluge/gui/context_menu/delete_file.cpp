@@ -39,7 +39,7 @@ std::string_view DeleteFile::getTitle() {
 	return l10n::get(STRING_FOR_DELETE_QMARK);
 }
 
-Sized<std::string_view*> DeleteFile::getOptions() {
+std::span<std::string_view> DeleteFile::getOptions() {
 	using enum l10n::String;
 
 	if (display->haveOLED()) {

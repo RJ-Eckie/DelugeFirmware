@@ -38,7 +38,7 @@ public:
 	std::string_view getTitle() override;
 
 	/// Options
-	Sized<std::string_view*> getOptions() override;
+	std::span<std::string_view> getOptions() override;
 };
 
 extern AudioInputSelector audioInputSelector;

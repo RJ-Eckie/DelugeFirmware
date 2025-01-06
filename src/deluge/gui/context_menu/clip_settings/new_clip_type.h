@@ -36,7 +36,7 @@ public:
 	std::string_view getTitle() override;
 
 	/// Options
-	Sized<std::string_view*> getOptions() override;
+	std::span<std::string_view> getOptions() override;
 	ActionResult padAction(int32_t x, int32_t y, int32_t on) override;
 };
 

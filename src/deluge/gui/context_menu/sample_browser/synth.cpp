@@ -34,7 +34,7 @@ std::string_view Synth::getTitle() {
 	return l10n::get(STRING_FOR_LOAD_FILES);
 }
 
-Sized<std::string_view*> Synth::getOptions() {
+std::span<std::string_view> Synth::getOptions() {
 	using enum l10n::String;
 	static std::string_view options[] = {
 	    l10n::get(STRING_FOR_MULTISAMPLES), //<

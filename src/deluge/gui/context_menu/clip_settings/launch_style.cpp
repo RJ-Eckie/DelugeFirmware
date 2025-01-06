@@ -19,7 +19,7 @@ std::string_view LaunchStyleMenu::getTitle() {
 	return title;
 }
 
-Sized<std::string_view*> LaunchStyleMenu::getOptions() {
+std::span<std::string_view> LaunchStyleMenu::getOptions() {
 	using enum l10n::String;
 	static std::string_view options[] = {
 	    l10n::get(STRING_FOR_DEFAULT_LAUNCH),

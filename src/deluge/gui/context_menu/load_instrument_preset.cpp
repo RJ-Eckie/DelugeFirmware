@@ -29,7 +29,7 @@ std::string_view LoadInstrumentPreset::getTitle() {
 	return l10n::get(STRING_FOR_LOAD_PRESET);
 }
 
-Sized<std::string_view*> LoadInstrumentPreset::getOptions() {
+std::span<std::string_view> LoadInstrumentPreset::getOptions() {
 	using enum l10n::String;
 	static std::string_view options[] = {l10n::get(STRING_FOR_CLONE)};
 	return {options, 1};

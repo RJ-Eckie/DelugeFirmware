@@ -104,14 +104,16 @@ public:
 	 */
 	inline void set(RuntimeFeatureSettingType type, uint32_t value) { settings[type].value = value; }
 
-	inline const char* getStartupSong() { return startupSong.get(); }
+	// TODO: replace with path to song when Paths are implemented
+	//[[nodiscard]] Path& getStartupSong() const { return startupSong; }
+	[[nodiscard]] std::string_view getStartupSong() const { return startupSong; }
 	void init();
 	void readSettingsFromFile();
 	void writeSettingsToFile();
 
 protected:
 	std::array<RuntimeFeatureSetting, RuntimeFeatureSettingType::MaxElement> settings = {};
-	String startupSong;
+	std::string startupSong;
 
 private:
 	ResizeableArray unknownSettings;

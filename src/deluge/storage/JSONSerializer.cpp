@@ -225,8 +225,10 @@ void JsonSerializer::printIndents() {
 	}
 }
 
-Error JsonSerializer::closeFileAfterWriting(char const* path, char const* beginningString, char const* endString) {
-	return closeAfterWriting(path, beginningString, NULL);
+Error JsonSerializer::closeFileAfterWriting(std::optional<std::string_view> path,
+                                            std::optional<std::string_view> beginningString,
+                                            std::optional<std::string_view> endString) {
+	return closeAfterWriting(path, beginningString, std::nullopt);
 }
 
 void JsonSerializer::writeArrayStart(char const* tag, bool startNewLineAfter, bool box) {

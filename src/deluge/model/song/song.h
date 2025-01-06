@@ -37,6 +37,7 @@
 #include "storage/flash_storage.h"
 #include "util/container/array/ordered_resizeable_array_with_multi_word_key.h"
 #include "util/d_string.h"
+#include <string_view>
 
 class MidiCommand;
 class Clip;
@@ -155,7 +156,7 @@ public:
 	void setBPM(float tempoBPM, bool shouldLogAction);
 	void setTempoFromParams(int32_t magnitude, int8_t whichValue, bool shouldLogAction);
 	void deleteSoundsWhichWontSound();
-	void writeTemplateSong(const char* templateSong);
+	void writeTemplateSong(std::string_view templatePath);
 	void
 	deleteClipObject(Clip* clip, bool songBeingDestroyedToo = false,
 	                 InstrumentRemoval instrumentRemovalInstruction = InstrumentRemoval::DELETE_OR_HIBERNATE_IF_UNUSED);
@@ -179,7 +180,7 @@ public:
 	int32_t convertSyncLevelFromFileValueToInternalValue(int32_t fileValue);
 	int32_t convertSyncLevelFromInternalValueToFileValue(int32_t internalValue);
 	String getSongFullPath();
-	void setSongFullPath(const char* fullPath);
+	void setSongFullPath(std::string_view fullPath);
 	int32_t getInputTickMagnitude() const { return insideWorldTickMagnitude + insideWorldTickMagnitudeOffsetFromBPM; }
 
 	GlobalEffectableForSong globalEffectable;

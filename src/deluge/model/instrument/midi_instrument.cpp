@@ -31,6 +31,7 @@
 #include "modulation/midi/midi_param_collection.h"
 #include "modulation/params/param_set.h"
 #include "storage/storage_manager.h"
+#include "util/try.h"
 #include <cstring>
 #include <string_view>
 
@@ -517,7 +518,7 @@ void MIDIInstrument::readDeviceDefinitionFileNameFromPresetOrSong(Deserializer& 
 
 	while (*(tagName = reader.readNextTagOrAttributeName())) {
 		if (!strcmp(tagName, "name")) {
-			reader.readTagOrAttributeValueString(&deviceDefinitionFileName);
+			deviceDefinitionFileName = reader.readTagOrAttributeValueString().value_or("");
 		}
 		reader.exitTag();
 	}

@@ -37,10 +37,9 @@ Error WaveTableReader::readBytesPassedErrorChecking(char* outputBuffer, int32_t 
 }
 
 Error WaveTableReader::readNewCluster() {
-
-	UINT bytesRead;
-	FRESULT result = f_read(&smDeserializer.readFIL, smDeserializer.fileClusterBuffer, Cluster::size, &bytesRead);
-	if (result) {
+	auto read =
+	    smDeserializer.file.read({reinterpret_cast<std::byte*>(smDeserializer.fileClusterBuffer), Cluster::size});
+	if (!read || read->size_bytes() != Cluster::size) {
 		return Error::SD_CARD; // Failed to load cluster from card
 	}
 	return Error::NONE;

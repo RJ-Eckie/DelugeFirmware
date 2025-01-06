@@ -30,6 +30,7 @@
 #include "storage/storage_manager.h"
 #include "util/container/vector/named_thing_vector.h"
 #include "util/misc.h"
+#include "util/try.h"
 
 extern "C" {
 #include "RZA1/usb/r_usb_basic/src/driver/inc/r_usb_basic_define.h"
@@ -53,7 +54,7 @@ NamedThingVector hostedMIDIDevices{__builtin_offsetof(MIDICableUSBHosted, name)}
 bool differentiatingInputsByDevice = true;
 
 struct USBDev {
-	String name{};
+	String name;
 	uint16_t vendorId;
 	uint16_t productId;
 };
@@ -341,7 +342,7 @@ MIDICable* readDeviceReferenceFromFile(Deserializer& reader) {
 			productId = reader.readTagOrAttributeValueHex(0);
 		}
 		else if (!strcmp(tagName, "name")) {
-			reader.readTagOrAttributeValueString(&name);
+			name = reader.readTagOrAttributeValueString().value_or("");
 		}
 		else if (!strcmp(tagName, "port")) {
 			char const* port = reader.readTagOrAttributeValue();
@@ -367,7 +368,7 @@ MIDICable* readDeviceReferenceFromFile(Deserializer& reader) {
 	}
 
 	// If we got something, go use it
-	if (!name.isEmpty() || vendorId) {
+	if (!name.empty() || vendorId) {
 		return getOrCreateHostedMIDIDeviceFromDetails(&name, vendorId, productId); // Will return NULL if error.
 	}
 
@@ -562,7 +563,7 @@ void readAHostedDeviceFromFile(Deserializer& reader) {
 			productId = reader.readTagOrAttributeValueHex(0);
 		}
 		else if (!strcmp(tagName, "name")) {
-			reader.readTagOrAttributeValueString(&name);
+			name = D_TRY_CATCH(reader.readTagOrAttributeValueString(), error, { return; });
 		}
 		else if (!strcmp(tagName, "input")) {
 			whichPort = MIDI_DIRECTION_INPUT_TO_DELUGE;

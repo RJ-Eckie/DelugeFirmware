@@ -204,6 +204,8 @@ void XMLSerializer::writeArrayEnding(char const* tag, bool shouldPrintIndents, b
 	writeClosingTag(tag, shouldPrintIndents);
 }
 
-Error XMLSerializer::closeFileAfterWriting(char const* path, char const* beginningString, char const* endString) {
+Error XMLSerializer::closeFileAfterWriting(std::optional<std::string_view> path,
+                                           std::optional<std::string_view> beginningString,
+                                           std::optional<std::string_view> endString) {
 	return closeAfterWriting(path, beginningString, endString);
 }

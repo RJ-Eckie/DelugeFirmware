@@ -18,6 +18,7 @@
 #pragma once
 #include "audio_file.h"
 #include "definitions_cxx.hpp"
+#include "fatfs/fatfs.hpp"
 #include "storage/cluster/cluster.h"
 #include "storage/cluster/cluster_priority_queue.h"
 #include <array>
@@ -134,7 +135,7 @@ public:
 	String alternateAudioFileLoadPath;
 	AlternateLoadDirStatus alternateLoadDirStatus = AlternateLoadDirStatus::NONE_SET;
 	ThingType thingTypeBeingLoaded = ThingType::NONE;
-	DIR alternateLoadDir;
+	FatFS::Directory alternateLoadDir;
 
 	std::array<int32_t, kNumAudioRecordingFolders> highestUsedAudioRecordingNumber;
 	std::bitset<kNumAudioRecordingFolders> highestUsedAudioRecordingNumberNeedsReChecking;

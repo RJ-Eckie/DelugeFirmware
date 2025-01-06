@@ -1054,7 +1054,7 @@ Clip* Song::getNextSessionClipWithOutput(int32_t offset, Output* output, Clip* p
 	}
 }
 
-void Song::writeTemplateSong(const char* templatePath) {
+void Song::writeTemplateSong(std::string_view templatePath) {
 	name.set("DEFAULT");
 	Error error = StorageManager::createXMLFile(templatePath, smSerializer, false, false);
 	if (error != Error::NONE) {
@@ -5708,19 +5708,14 @@ String Song::getSongFullPath() {
 	return fullPath;
 }
 
-void Song::setSongFullPath(const char* fullPath) {
-	if (char* filename = strrchr((char*)fullPath, '/')) {
-		auto fullPathLength = strlen(fullPath);
-		char dir[sizeof(char) * fullPathLength + 1];
-
-		memset(dir, 0, sizeof(char) * fullPathLength + 1);
-		strncpy(dir, fullPath, fullPathLength - strlen(filename));
-
-		dirPath.set(dir);
-		name.set(++filename);
+void Song::setSongFullPath(std::string_view path) {
+	if (path.contains('/')) {
+		auto split = path.find_last_of('/') + 1;
+		dirPath = path.substr(0, split);
+		name = path.substr(split);
 	}
 	else {
-		name.set(fullPath);
+		name = path;
 	}
 }
 

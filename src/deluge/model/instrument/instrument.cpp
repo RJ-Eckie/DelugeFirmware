@@ -26,6 +26,7 @@
 #include "processing/engines/audio_engine.h"
 #include "storage/audio/audio_file_manager.h"
 #include "storage/storage_manager.h"
+#include "util/try.h"
 #include <cstring>
 #include <new>
 
@@ -137,7 +138,7 @@ bool Instrument::readTagFromFile(Deserializer& reader, char const* tagName) {
 	}
 
 	else if (!strcmp(tagName, "presetFolder")) {
-		reader.readTagOrAttributeValueString(&dirPath);
+		dirPath = reader.readTagOrAttributeValueString().value_or("");
 	}
 
 	else {

@@ -36,11 +36,13 @@
 #include "processing/sound/sound_instrument.h"
 #include "storage/audio/audio_file_manager.h"
 #include "storage/storage_manager.h"
+#include "util/exceptions.h"
 #include "util/firmware_version.h"
 #include "util/functions.h"
 #include "util/try.h"
 #include "version.h"
-#include <string.h>
+#include <cstring>
+#include <string>
 
 extern "C" {
 #include "RZA1/oled/oled_low_level.h"
@@ -55,11 +57,10 @@ extern "C" {
 ********************************************************************************/
 
 JsonDeserializer::JsonDeserializer() {
-
 	reset();
 }
 
-JsonDeserializer::JsonDeserializer(uint8_t* inbuf, size_t buflen) : FileDeserializer(inbuf, buflen) {
+JsonDeserializer::JsonDeserializer(std::span<std::byte> buffer) : FileDeserializer{buffer} {
 	reset();
 }
 
@@ -212,14 +213,11 @@ int32_t JsonDeserializer::readAttributeValueInt() {
 }
 
 // Only call if PAST_ATTRIBUTE_NAME or PAST_COLON
-Error JsonDeserializer::readAttributeValueString(String* string) {
-
+std::expected<std::string, Error> JsonDeserializer::readAttributeValueString() {
 	if (!getIntoAttributeValue()) {
-		string->clear();
-		return Error::NONE;
+		return "";
 	}
-	Error error = readStringUntilChar(string, '"');
-	return error;
+	return readStringUntilChar('"');
 }
 
 void JsonDeserializer::skipUntilChar(char endChar) {
@@ -240,9 +238,8 @@ void JsonDeserializer::skipUntilChar(char endChar) {
 
 // A non-destructive (to the fileClusterBuffer contents) routine to read into a String object.
 // Returns memory error. If error, caller must deal with the fact that the end-character hasn't been reached.
-Error JsonDeserializer::readStringUntilChar(String* string, char endChar) {
-
-	int32_t newStringPos = 0;
+std::expected<std::string, Error> JsonDeserializer::readStringUntilChar(char endChar) {
+	std::string output;
 
 	do {
 		int32_t bufferPosNow = fileReadBufferCurrentPos;
@@ -250,19 +247,17 @@ Error JsonDeserializer::readStringUntilChar(String* string, char endChar) {
 			bufferPosNow++;
 		}
 
-		int32_t numCharsHere = bufferPosNow - fileReadBufferCurrentPos;
+		size_t numCharsHere = bufferPosNow - fileReadBufferCurrentPos;
 
-		if (numCharsHere) {
-			Error error =
-			    string->concatenateAtPos(&fileClusterBuffer[fileReadBufferCurrentPos], newStringPos, numCharsHere);
-
-			fileReadBufferCurrentPos = bufferPosNow;
-
-			if (error != Error::NONE) {
-				return error;
+		if (numCharsHere != 0u) {
+			try {
+				output += std::string_view{reinterpret_cast<char*>(&fileClusterBuffer[fileReadBufferCurrentPos]),
+				                           numCharsHere};
+			} catch (deluge::exception e) {
+				return std::unexpected{Error::INSUFFICIENT_RAM};
 			}
 
-			newStringPos += numCharsHere;
+			fileReadBufferCurrentPos = bufferPosNow;
 		}
 
 	} while (fileReadBufferCurrentPos == currentReadBufferEndPos && readFileClusterIfNecessary());
@@ -271,7 +266,7 @@ Error JsonDeserializer::readStringUntilChar(String* string, char endChar) {
 
 	readDone();
 	readState = JsonState::ValueRead;
-	return Error::NONE;
+	return output;
 }
 
 // Called when the buf index is pointed at the first char of the value
@@ -473,11 +468,12 @@ getOut:
 }
 
 // Returns memory error
-Error JsonDeserializer::readTagOrAttributeValueString(String* string) {
-	if (!skipWhiteSpace())
-		return Error::FILE_CORRUPTED;
+std::expected<std::string, Error> JsonDeserializer::readTagOrAttributeValueString() {
+	if (!skipWhiteSpace()) {
+		return std::unexpected{Error::FILE_CORRUPTED};
+	}
 	skipUntilChar('\"');
-	return readStringUntilChar(string, '\"');
+	return readStringUntilChar('\"');
 }
 
 int32_t JsonDeserializer::getNumCharsRemainingInValueBeforeEndOfCluster() {

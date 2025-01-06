@@ -28,6 +28,7 @@
 #include "model/song/song.h"
 #include "processing/engines/audio_engine.h"
 #include "storage/storage_manager.h"
+#include "util/try.h"
 
 Output::Output(OutputType newType) : type(newType) {
 	mutedInArrangementMode = false;
@@ -401,7 +402,7 @@ bool Output::readTagFromFile(Deserializer& reader, char const* tagName) {
 	}
 
 	else if (!strcmp(tagName, getNameXMLTag())) {
-		reader.readTagOrAttributeValueString(&name);
+		name = reader.readTagOrAttributeValueString().value_or("");
 	}
 
 	else {

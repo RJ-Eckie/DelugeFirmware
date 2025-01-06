@@ -30,6 +30,7 @@
 #include "processing/engines/audio_engine.h"
 #include "storage/storage_manager.h"
 #include "util/misc.h"
+#include "util/try.h"
 #include <new>
 
 SoundDrum::SoundDrum() : Drum(DrumType::SOUND) {
@@ -51,11 +52,12 @@ Drum* SoundDrum::clone() {
 
 bool SoundDrum::readTagFromFile(Deserializer& reader, char const* tagName) {
 	if (!strcmp(tagName, "name")) {
-		reader.readTagOrAttributeValueString(&name);
+		name = reader.readTagOrAttributeValueString().value_or("");
 		reader.exitTag("name");
 	}
 	else if (!strcmp(tagName, "path")) {
-		reader.readTagOrAttributeValueString(&path);
+		// TODO: Handle error
+		path = reader.readTagOrAttributeValueString().value_or("");
 		reader.exitTag("path");
 	}
 

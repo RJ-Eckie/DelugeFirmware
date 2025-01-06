@@ -20,6 +20,7 @@
 #include "RZA1/sdhi/inc/sdif.h"
 #include "definitions_cxx.hpp"
 #include "drivers/pic/pic.h"
+#include "fatfs.hpp"
 #include "gui/ui/audio_recorder.h"
 #include "gui/ui/browser/browser.h"
 #include "gui/ui/keyboard/keyboard_screen.h"
@@ -67,6 +68,7 @@
 #include "storage/storage_manager.h"
 #include "util/misc.h"
 #include "util/pack.h"
+#include "util/try.h"
 #include <stdlib.h>
 
 #if AUTOMATED_TESTER_ENABLED
@@ -470,18 +472,16 @@ void setupStartupSong() {
 	auto defaultSongFullPath = "SONGS/DEFAULT.XML";
 	auto filename =
 	    startupSongMode == StartupSongMode::TEMPLATE ? defaultSongFullPath : runtimeFeatureSettings.getStartupSong();
-	String failSafePath;
-	failSafePath.concatenate("SONGS/__STARTUP_OFF_CHECK_");
+	std::string failSafePath = "SONGS/__STARTUP_OFF_CHECK_";
 
-	char replaced[sizeof(char) * strlen(filename) + 1]; // +1 for NULL terminator
-	replace_char(replaced, filename, '/', '_');
-	failSafePath.concatenate(replaced);
+	std::string replaced{filename};
+	std::ranges::replace(replaced, '/', '_'); // replace all '/' with '_'
+	failSafePath += replaced;
 
-	if (StorageManager::fileExists(failSafePath.get())) {
-		String msgReason;
-		msgReason.concatenate("STARTUP OFF, reason: ");
-		msgReason.concatenate(filename);
-		display->displayPopup(msgReason.get());
+	if (StorageManager::fileExists(failSafePath)) {
+		std::string msgReason = "STARTUP OFF, reason: ";
+		msgReason += filename;
+		display->displayPopup(msgReason.c_str());
 		return;
 	}
 	switch (startupSongMode) {
@@ -494,14 +494,12 @@ void setupStartupSong() {
 	case StartupSongMode::LASTOPENED:
 		[[fallthrough]];
 	case StartupSongMode::LASTSAVED: {
-		FIL f;
-		if (f_open(&f, failSafePath.get(), FA_CREATE_ALWAYS | FA_WRITE) == FR_OK) {
-			f_close(&f);
-		}
-		else {
+		FatFS::File canary = D_TRY_CATCH(FatFS::File::open(failSafePath, FA_CREATE_ALWAYS | FA_WRITE), error, {
 			// something wrong creating canary file, failsafe.
 			return;
-		}
+		});
+		canary.close();
+
 		if (!StorageManager::fileExists(filename)) {
 			filename = defaultSongFullPath;
 			if (startupSongMode == StartupSongMode::TEMPLATE || !StorageManager::fileExists(filename)) {
@@ -518,8 +516,9 @@ void setupStartupSong() {
 				currentSong->name.clear();
 			}
 		}
-		f_unlink(failSafePath.get());
-	} break;
+		FatFS::unlink(failSafePath);
+		break;
+	}
 	case StartupSongMode::BLANK:
 		[[fallthrough]];
 	default:

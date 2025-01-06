@@ -2467,7 +2467,7 @@ someError:
 		int32_t temp;
 
 		if (!strcmp(tagName, "clipName")) {
-			reader.readTagOrAttributeValueString(&name);
+			name = reader.readTagOrAttributeValueString().value_or("");
 		}
 		else if (!strcmp(tagName, "inKeyMode")) {
 			inScaleMode = reader.readTagOrAttributeValueInt();
@@ -2492,11 +2492,11 @@ someError:
 		}
 
 		else if (!strcmp(tagName, "instrumentPresetName")) {
-			reader.readTagOrAttributeValueString(&instrumentPresetName);
+			instrumentPresetName = D_TRY_CATCH(reader.readTagOrAttributeValueString(), error, { return error; });
 		}
 
 		else if (!strcmp(tagName, "instrumentPresetFolder")) {
-			reader.readTagOrAttributeValueString(&instrumentPresetDirPath);
+			instrumentPresetDirPath = D_TRY_CATCH(reader.readTagOrAttributeValueString(), error, { return error; });
 			dirPathHasBeenSpecified = true;
 		}
 

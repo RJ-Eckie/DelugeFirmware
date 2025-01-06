@@ -98,6 +98,7 @@ public:
 
 	constexpr String(const char* cstr) { assign(cstr); }
 	constexpr String(std::string_view str) { assign(str); }
+	constexpr String(std::string&& str) { assign(str); }
 
 	constexpr String& assign(std::string_view str) {
 		if (!data_ || data_.use_count() > 1) {

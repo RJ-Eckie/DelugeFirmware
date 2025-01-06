@@ -219,9 +219,9 @@ reachedNameEnd:
 			haveReachedNameEnd = true;
 			// If possible, just return a pointer to the chars within the existing buffer
 			if (!charPos && fileReadBufferCurrentPos < currentReadBufferEndPos) {
-				fileClusterBuffer[fileReadBufferCurrentPos] = 0; // NULL end of the string we're returning
-				fileReadBufferCurrentPos++;                      // Gets us past the endChar
-				return &fileClusterBuffer[bufferPosAtStart];
+				fileClusterBuffer[fileReadBufferCurrentPos] = '\0'; // NULL end of the string we're returning
+				fileReadBufferCurrentPos++;                         // Gets us past the endChar
+				return reinterpret_cast<char*>(&fileClusterBuffer[bufferPosAtStart]);
 			}
 		}
 
@@ -379,17 +379,16 @@ int32_t XMLDeserializer::readAttributeValueInt() {
 }
 
 // Only call if PAST_ATTRIBUTE_NAME or PAST_EQUALS_SIGN
-Error XMLDeserializer::readAttributeValueString(String* string) {
+std::expected<std::string, Error> XMLDeserializer::readAttributeValueString() {
 
 	if (!getIntoAttributeValue()) {
-		string->clear();
-		return Error::NONE;
+		return "";
 	}
-	Error error = readStringUntilChar(string, charAtEndOfValue);
-	if (error == Error::NONE) {
+	auto read = readStringUntilChar(charAtEndOfValue);
+	if (read.has_value()) {
 		xmlArea = IN_TAG_PAST_NAME;
 	}
-	return error;
+	return read;
 }
 
 void XMLDeserializer::skipUntilChar(char endChar) {
@@ -409,29 +408,25 @@ void XMLDeserializer::skipUntilChar(char endChar) {
 }
 
 // Returns memory error. If error, caller must deal with the fact that the end-character hasn't been reached
-Error XMLDeserializer::readStringUntilChar(String* string, char endChar) {
+std::expected<std::string, Error> XMLDeserializer::readStringUntilChar(char endChar) {
 
-	int32_t newStringPos = 0;
-
+	std::string output;
 	do {
 		int32_t bufferPosNow = fileReadBufferCurrentPos;
 		while (bufferPosNow < currentReadBufferEndPos && fileClusterBuffer[bufferPosNow] != endChar) {
 			bufferPosNow++;
 		}
 
-		int32_t numCharsHere = bufferPosNow - fileReadBufferCurrentPos;
+		size_t numCharsHere = bufferPosNow - fileReadBufferCurrentPos;
 
-		if (numCharsHere) {
-			Error error =
-			    string->concatenateAtPos(&fileClusterBuffer[fileReadBufferCurrentPos], newStringPos, numCharsHere);
-
-			fileReadBufferCurrentPos = bufferPosNow;
-
-			if (error != Error::NONE) {
-				return error;
+		if (numCharsHere != 0u) {
+			try {
+				output += std::string_view{&fileClusterBuffer[fileReadBufferCurrentPos], numCharsHere};
+				fileReadBufferCurrentPos = bufferPosNow;
+			} catch (deluge::exception e) {
+				fileReadBufferCurrentPos = bufferPosNow;
+				return std::unexpected{Error::INSUFFICIENT_RAM};
 			}
-
-			newStringPos += numCharsHere;
 		}
 
 	} while (fileReadBufferCurrentPos == currentReadBufferEndPos && readFileClusterIfNecessary());
@@ -439,7 +434,7 @@ Error XMLDeserializer::readStringUntilChar(String* string, char endChar) {
 	fileReadBufferCurrentPos++; // Gets us past the endChar
 
 	readDone();
-	return Error::NONE;
+	return output;
 }
 
 char const* XMLDeserializer::readUntilChar(char endChar) {
@@ -724,25 +719,23 @@ getOut:
 }
 
 // Returns memory error
-Error XMLDeserializer::readTagOrAttributeValueString(String* string) {
-
-	Error error;
-
+std::expected<std::string, Error> XMLDeserializer::readTagOrAttributeValueString() {
 	switch (xmlArea) {
-	case BETWEEN_TAGS:
-		error = readStringUntilChar(string, '<');
-		if (error == Error::NONE) {
+	case BETWEEN_TAGS: {
+		auto string = readStringUntilChar('<');
+		if (string.has_value()) {
 			xmlArea = IN_TAG_NAME;
 		}
-		return error;
+		return string;
+	}
 
 	case PAST_ATTRIBUTE_NAME:
 	case PAST_EQUALS_SIGN:
-		return readAttributeValueString(string);
+		return readAttributeValueString();
 
 	case IN_TAG_PAST_NAME: // Could happen if trying to read a value but instead of a value there are multiple more
 	                       // contents, like attributes etc. Obviously not "meant" to happen, but we need to cope.
-		return Error::FILE_CORRUPTED;
+		return std::unexpected{Error::FILE_CORRUPTED};
 
 	default:
 		if (ALPHA_OR_BETA_VERSION) {

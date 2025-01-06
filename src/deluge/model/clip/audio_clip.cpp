@@ -38,6 +38,7 @@
 #include "processing/audio_output.h"
 #include "processing/engines/audio_engine.h"
 #include "storage/storage_manager.h"
+#include "util/try.h"
 #include <new>
 
 namespace params = deluge::modulation::params;
@@ -1100,14 +1101,6 @@ Error AudioClip::readFromFile(Deserializer& reader, Song* song) {
 
 	Error error;
 
-	if (false) {
-ramError:
-		error = Error::INSUFFICIENT_RAM;
-
-someError:
-		return error;
-	}
-
 	char const* tagName;
 
 	int32_t readAutomationUpToPos = kMaxSequenceLength;
@@ -1116,11 +1109,13 @@ someError:
 		// D_PRINTLN(tagName); delayMS(30);
 
 		if (!strcmp(tagName, "trackName")) {
-			reader.readTagOrAttributeValueString(&outputNameWhileLoading);
+			outputNameWhileLoading = reader.readTagOrAttributeValueString().value_or(
+			    ""); // not being able to read a trackName is not a failure
 		}
 
 		else if (!strcmp(tagName, "filePath")) {
-			reader.readTagOrAttributeValueString(&sampleHolder.filePath);
+			sampleHolder.filePath =
+			    D_TRY_CATCH(reader.readTagOrAttributeValueString(), error, { return Error::FILE_UNREADABLE; });
 		}
 
 		else if (!strcmp(tagName, "overdubsShouldCloneAudioTrack")) {

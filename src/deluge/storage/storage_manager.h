@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string_view>
 
 extern "C" {
 #include "fatfs/ff.h"
@@ -53,19 +54,19 @@ class SMSharedData {};
 class FileReader {
 public:
 	FileReader();
-	FileReader(char* memBuffer, uint32_t bufLen);
+	FileReader(std::span<std::byte> buffer);
 	virtual ~FileReader();
 
-	FIL readFIL;
+	FatFS::File file;
 	char* fileClusterBuffer;
-	UINT currentReadBufferEndPos;
-	int32_t fileReadBufferCurrentPos;
+	size_t currentReadBufferEndPos;
+	size_t fileReadBufferCurrentPos;
 
 	FRESULT closeWriter();
 
 	bool peekChar(char* thisChar);
 	bool readChar(char* thisChar);
-	uint32_t bytesRemainingInBuffer() { return currentReadBufferEndPos - fileReadBufferCurrentPos; }
+	size_t bytesRemainingInBuffer() { return currentReadBufferEndPos - fileReadBufferCurrentPos; }
 	char* GetCurrentAddressInBuffer() { return fileClusterBuffer + fileReadBufferCurrentPos; }
 
 protected:
@@ -76,27 +77,28 @@ protected:
 	void readDone();
 
 	bool memoryBased = false;
-	int32_t readCount; // Used for multitask interleaving.
+	size_t readCount; // Used for multitask interleaving.
 	bool reachedBufferEnd;
 	void resetReader();
 };
 
 class FileWriter {
 public:
-	FIL writeFIL;
+	FatFS::File file;
 	FileWriter();
 	FileWriter(bool inMem);
 
 	virtual ~FileWriter();
 
-	Error closeAfterWriting(char const* path, char const* beginningString, char const* endString);
+	Error closeAfterWriting(std::optional<std::string_view> path, std::optional<std::string_view> beginningString,
+	                        std::optional<std::string_view> endString);
 
-	void writeByte(int8_t b);
-	void writeBlock(uint8_t* block, uint32_t size);
-	void writeChars(char const* output);
-	FRESULT closeWriter();
+	void writeByte(std::byte b);
+	void writeBlock(std::span<std::byte> block);
+	void writeChars(std::string_view output);
+	std::expected<void, FatFS::Error> closeWriter();
 
-	char* getBufferPtr() { return writeClusterBuffer; }
+	std::byte* getBufferPtr() { return writeClusterBuffer; }
 	int32_t bytesWritten();
 	void setMemoryBased() {
 		memoryBased = true;
@@ -109,10 +111,10 @@ protected:
 	bool memoryBased = false;
 	bool callRoutines = true;
 	uint8_t indentAmount;
-	char* writeClusterBuffer;
+	std::byte* writeClusterBuffer;
 	uint32_t bufferSize;
-	int32_t fileWriteBufferCurrentPos;
-	int32_t fileTotalBytesWritten;
+	size_t fileWriteBufferCurrentPos;
+	size_t fileTotalBytesWritten;
 	bool fileAccessFailedDuringWrite;
 };
 
@@ -135,8 +137,9 @@ public:
 	virtual void printIndents() = 0;
 	virtual void insertCommaIfNeeded() = 0;
 	virtual void write(char const* output) = 0;
-	virtual Error closeFileAfterWriting(char const* path = nullptr, char const* beginningString = nullptr,
-	                                    char const* endString = nullptr) = 0;
+	virtual Error closeFileAfterWriting(std::optional<std::string_view> path = std::nullopt,
+	                                    std::optional<std::string_view> beginningString = std::nullopt,
+	                                    std::optional<std::string_view> endString = std::nullopt) = 0;
 
 	virtual void reset() = 0;
 	void writeFirmwareVersion();
@@ -174,8 +177,9 @@ public:
 	void insertCommaIfNeeded() override {}
 	void printIndents() override;
 	void write(char const* output) override;
-	Error closeFileAfterWriting(char const* path = nullptr, char const* beginningString = nullptr,
-	                            char const* endString = nullptr) override;
+	Error closeFileAfterWriting(std::optional<std::string_view> path = std::nullopt,
+	                            std::optional<std::string_view> beginningString = std::nullopt,
+	                            std::optional<std::string_view> endString = std::nullopt) override;
 	void reset() override;
 
 private:
@@ -196,7 +200,7 @@ public:
 	virtual Error tryReadingFirmwareTagFromFile(char const* tagName, bool ignoreIncorrectFirmware = false) = 0;
 
 	virtual char const* readNextCharsOfTagOrAttributeValue(int32_t numChars) = 0;
-	virtual Error readTagOrAttributeValueString(String* string) = 0;
+	virtual std::expected<std::string, Error> readTagOrAttributeValueString() = 0;
 	virtual bool match(char const ch) = 0;
 	virtual void exitTag(char const* exitTagName = NULL, bool closeObject = false) = 0;
 
@@ -205,8 +209,8 @@ public:
 
 class FileDeserializer : public Deserializer, public FileReader {
 public:
-	FileDeserializer() : FileReader() {}
-	FileDeserializer(uint8_t* inbuf, size_t buflen) : FileReader((char*)inbuf, buflen) {}
+	FileDeserializer() = default;
+	FileDeserializer(std::span<std::byte> buffer) : FileReader{buffer} {}
 };
 
 class XMLDeserializer : public FileDeserializer {
@@ -225,7 +229,7 @@ public:
 
 	int readHexBytesUntil(uint8_t* bytes, int32_t maxLen, char endPos);
 	char const* readNextCharsOfTagOrAttributeValue(int32_t numChars) override;
-	Error readTagOrAttributeValueString(String* string) override;
+	std::expected<std::string, Error> readTagOrAttributeValueString() override;
 	char const* readTagOrAttributeValue() override;
 	bool match(char const ch) override;
 
@@ -257,8 +261,8 @@ private:
 	bool getIntoAttributeValue();
 	int32_t readAttributeValueInt();
 
-	Error readStringUntilChar(String* string, char endChar);
-	Error readAttributeValueString(String* string);
+	std::expected<std::string, Error> readStringUntilChar(char endChar);
+	std::expected<std::string, Error> readAttributeValueString();
 };
 
 class JsonSerializer : public Serializer, public FileWriter {
@@ -283,8 +287,9 @@ public:
 	void printIndents() override;
 	void insertCommaIfNeeded() override;
 	void write(char const* output) override;
-	Error closeFileAfterWriting(char const* path = nullptr, char const* beginningString = nullptr,
-	                            char const* endString = nullptr) override;
+	Error closeFileAfterWriting(std::optional<std::string_view> path = std::nullopt,
+	                            std::optional<std::string_view> beginningString = std::nullopt,
+	                            std::optional<std::string_view> endString = std::nullopt) override;
 	void reset() override;
 	// Begin Json-only API
 
@@ -296,7 +301,7 @@ private:
 class JsonDeserializer : public FileDeserializer {
 public:
 	JsonDeserializer();
-	JsonDeserializer(uint8_t* inbuf, size_t buflen);
+	JsonDeserializer(std::span<std::byte> buffer);
 	~JsonDeserializer() override = default;
 
 	bool prepareToReadTagOrAttributeValueOneCharAtATime() override;
@@ -310,7 +315,7 @@ public:
 
 	int readHexBytesUntil(uint8_t* bytes, int32_t maxLen, char endPos);
 	char const* readNextCharsOfTagOrAttributeValue(int32_t numChars) override;
-	Error readTagOrAttributeValueString(String* string) override;
+	std::expected<std::string, Error> readTagOrAttributeValueString() override;
 	char const* readTagOrAttributeValue() override;
 	bool match(char const ch) override;
 	void exitTag(char const* exitTagName = NULL, bool closeObject = false) override;
@@ -344,9 +349,8 @@ private:
 	int32_t readInt();
 	bool getIntoAttributeValue();
 	int32_t readAttributeValueInt();
-	Error readAttributeValueString(String* string);
-
-	Error readStringUntilChar(String* string, char endChar);
+	std::expected<std::string, Error> readAttributeValueString();
+	std::expected<std::string, Error> readStringUntilChar(char endChar);
 };
 
 extern XMLSerializer smSerializer;
@@ -358,8 +362,9 @@ extern FileDeserializer* activeDeserializer;
 
 namespace StorageManager {
 
-std::expected<FatFS::File, Error> createFile(char const* filePath, bool mayOverwrite);
-Error createXMLFile(char const* pathName, XMLSerializer& writer, bool mayOverwrite = false, bool displayErrors = true);
+std::expected<FatFS::File, Error> createFile(std::string_view filePath, bool mayOverwrite);
+Error createXMLFile(std::string_view pathName, XMLSerializer& writer, bool mayOverwrite = false,
+                    bool displayErrors = true);
 Error createJsonFile(char const* pathName, JsonSerializer& writer, bool mayOverwrite = false,
                      bool displayErrors = true);
 Error openXMLFile(FilePointer* filePointer, XMLDeserializer& reader, char const* firstTagName,
@@ -370,7 +375,7 @@ Error openDelugeFile(FileItem* currentFileItem, char const* firstTagName, char c
                      bool ignoreIncorrectFirmware = false);
 Error initSD();
 
-bool fileExists(char const* pathName);
+bool fileExists(std::string_view pathName);
 bool fileExists(char const* pathName, FilePointer* fp);
 /// takes a full path/to/file.text and makes sure the directories exist
 bool buildPathToFile(const char* fileName);

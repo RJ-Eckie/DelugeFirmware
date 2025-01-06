@@ -21,6 +21,7 @@
 #include "model/song/song.h"
 #include "storage/storage_manager.h"
 #include "util/d_string.h"
+#include "util/try.h"
 #include <cstring>
 #include <string_view>
 
@@ -33,7 +34,7 @@
 
 /// Unknown Settings container
 struct UnknownSetting {
-	std::string_view name;
+	std::string name; // must own its name since it's not stored elsewhere
 	uint32_t value;
 };
 
@@ -231,14 +232,16 @@ void RuntimeFeatureSettings::readSettingsFromFile() {
 		return;
 	}
 	Deserializer& reader = *activeDeserializer;
-	String currentName;
 	int32_t currentValue = 0;
 	char const* currentTag = nullptr;
 
 	while (*(currentTag = reader.readNextTagOrAttributeName())) {
 
 		if (strcmp(currentTag, "startupSong") == 0) {
-			reader.readTagOrAttributeValueString(&startupSong);
+			startupSong = D_TRY_CATCH(reader.readTagOrAttributeValueString(), error, {
+				display->displayPopup("Error reading startup song");
+				break;
+			});
 		}
 		if (strcmp(currentTag, TAG_RUNTIME_FEATURE_SETTING) == 0) {
 			// Read name
@@ -247,7 +250,10 @@ void RuntimeFeatureSettings::readSettingsFromFile() {
 				display->displayPopup("Community file err");
 				break;
 			}
-			reader.readTagOrAttributeValueString(&currentName);
+			std::string currentName = D_TRY_CATCH(reader.readTagOrAttributeValueString(), error, {
+				display->displayPopup("Community file err");
+				break;
+			});
 			reader.exitTag();
 
 			// Read value
@@ -262,7 +268,7 @@ void RuntimeFeatureSettings::readSettingsFromFile() {
 
 			bool found = false;
 			for (auto& setting : settings) {
-				if (strcmp(setting.xmlName.data(), currentName.get()) == 0) {
+				if (setting.xmlName == currentName) {
 					found = true;
 					setting.value = currentValue;
 				}
@@ -277,7 +283,7 @@ void RuntimeFeatureSettings::readSettingsFromFile() {
 				}
 				void* address = unknownSettings.getElementAddress(idx);
 				auto* unknownSetting = new (address) UnknownSetting();
-				unknownSetting->name = currentName.get();
+				unknownSetting->name = currentName;
 				unknownSetting->value = currentValue;
 			}
 		}
@@ -312,7 +318,7 @@ void RuntimeFeatureSettings::writeSettingsToFile() {
 	for (uint32_t idxUnknownSetting = 0; idxUnknownSetting < unknownSettings.getNumElements(); idxUnknownSetting++) {
 		UnknownSetting* unknownSetting = (UnknownSetting*)unknownSettings.getElementAddress(idxUnknownSetting);
 		writer.writeOpeningTagBeginning(TAG_RUNTIME_FEATURE_SETTING);
-		writer.writeAttribute(TAG_RUNTIME_FEATURE_SETTING_ATTR_NAME, unknownSetting->name.data(), false);
+		writer.writeAttribute(TAG_RUNTIME_FEATURE_SETTING_ATTR_NAME, unknownSetting->name.c_str(), false);
 		writer.writeAttribute(TAG_RUNTIME_FEATURE_SETTING_ATTR_VALUE, unknownSetting->value, false);
 		writer.writeOpeningTagEnd(false);
 		writer.writeClosingTag(TAG_RUNTIME_FEATURE_SETTING, false);

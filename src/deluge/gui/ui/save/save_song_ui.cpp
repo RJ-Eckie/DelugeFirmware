@@ -245,15 +245,12 @@ gotError:
 				FRESULT result = FRESULT::FR_OK;
 				// this is just blind copying to move samples to/from the song folder. The serializer is being used for
 				// the song file write so use the deserializer
-				result = f_open(&activeDeserializer->readFIL, sourceFilePath, FA_READ);
-
-				if (result != FR_OK) {
+				activeDeserializer->file = D_TRY_CATCH(FatFS::File::open(sourceFilePath, FA_READ), local_error, {
 					D_PRINTLN("open fail %s", sourceFilePath);
-					error = Error::UNSPECIFIED;
 					display->removeLoadingAnimation();
-					display->displayError(error);
+					display->displayError(Error::UNSPECIFIED);
 					return false;
-				}
+				});
 
 				char const* destFilePath;
 				char const* normalFilePath; // Just briefly stores a thing below
@@ -370,24 +367,24 @@ gotError:
 
 					// Copy
 					while (true) {
-						UINT bytesRead;
-						result = f_read(&activeDeserializer->readFIL, activeDeserializer->fileClusterBuffer,
-						                Cluster::size, &bytesRead);
-						if (result) {
-							D_PRINTLN("read fail");
-							error = Error::UNSPECIFIED;
-							activeDeserializer->closeWriter();
-							display->removeLoadingAnimation();
-							display->displayError(error);
-							return false;
-						}
-						if (!bytesRead) {
+						auto read = D_TRY_CATCH(
+						    activeDeserializer->file.read(
+						        {reinterpret_cast<std::byte*>(activeDeserializer->fileClusterBuffer), Cluster::size}),
+						    error, {
+							    D_PRINTLN("read fail");
+							    activeDeserializer->closeWriter();
+							    display->removeLoadingAnimation();
+							    display->displayError(Error::UNSPECIFIED);
+							    return false;
+						    });
+
+						if (read.empty()) {
 							break; // Stop, on rare case where file ended right at end of last cluster
 						}
 
-						auto written =
-						    created.value().write({(std::byte*)activeDeserializer->fileClusterBuffer, bytesRead});
-						if (!written || written.value() != bytesRead) {
+						auto written = created.value().write(
+						    {reinterpret_cast<std::byte*>(activeDeserializer->fileClusterBuffer), read.size_bytes()});
+						if (!written || written.value() != read.size_bytes()) {
 							D_PRINTLN("write fail %d", result);
 							error = Error::UNSPECIFIED;
 							activeDeserializer->closeWriter();
@@ -396,7 +393,7 @@ gotError:
 							return false;
 						}
 
-						if (bytesRead < Cluster::size) {
+						if (read.size_bytes() < Cluster::size) {
 							break; // Stop - file clearly ended part-way through cluster
 						}
 					}

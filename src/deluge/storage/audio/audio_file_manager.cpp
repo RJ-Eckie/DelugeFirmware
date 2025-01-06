@@ -631,12 +631,12 @@ tryAlternateDoesExist:
 
 tryAnAlternate:
 			proposedFileNamePointer = proposedFileName.get();
-			result = create_name(&alternateLoadDir, &proposedFileNamePointer);
+			result = create_name(&alternateLoadDir.inner(), &proposedFileNamePointer);
 			if (result != FR_OK) {
 				goto alternateFailed; // Can only fail if filename too weird.
 			}
 
-			result = dir_find(&alternateLoadDir);
+			result = dir_find(&alternateLoadDir.inner());
 
 			if (result != FR_OK) {
 alternateFailed:
@@ -654,7 +654,7 @@ tryNextAlternate:
 					goto tryAnAlternate;
 				}
 				if (alreadyTriedRegular) {
-					goto notFound;
+					return std::unexpected(Error::FILE_UNREADABLE);
 				}
 				else {
 					goto tryRegular;
@@ -662,8 +662,8 @@ tryNextAlternate:
 			}
 
 			// Ok, found file - in the alternate location.
-			effectiveFilePointer.sclust = ld_clust(&fileSystem, alternateLoadDir.dir);
-			effectiveFilePointer.objsize = ld_dword(alternateLoadDir.dir + DIR_FileSize);
+			effectiveFilePointer.sclust = ld_clust(&fileSystem, alternateLoadDir.inner().dir);
+			effectiveFilePointer.objsize = ld_dword(alternateLoadDir.inner().dir + DIR_FileSize);
 
 			usingAlternateLocation.set(&alternateAudioFileLoadPath);
 			error = usingAlternateLocation.concatenate("/");
@@ -687,18 +687,13 @@ tryNextAlternate:
 		// Otherwise, try the regular file path
 		else {
 tryRegular:
-			result = f_open(&smDeserializer.readFIL, filePath.get(), FA_READ);
-
-			// If that didn't work, try the alternate load directory, if we didn't already and it potentially exists
-			if (result != FR_OK) {
-
+			smDeserializer.file = D_TRY_CATCH(FatFS::File::open(filePath, FA_READ), error, {
+				// If that didn't work, try the alternate load directory, if we didn't already and it potentially exists
 				if (alternateLoadDirStatus == AlternateLoadDirStatus::MIGHT_EXIST) {
-
-					result = f_opendir(&alternateLoadDir, alternateAudioFileLoadPath.get());
-					if (result != FR_OK) {
+					alternateLoadDir = D_TRY_CATCH(FatFS::Directory::open(alternateAudioFileLoadPath), error, {
 						alternateLoadDirStatus = AlternateLoadDirStatus::NOT_FOUND;
-						goto notFound;
-					}
+						return std::unexpected(Error::FILE_UNREADABLE);
+					});
 
 					alternateLoadDirStatus = AlternateLoadDirStatus::DOES_EXIST;
 
@@ -706,13 +701,12 @@ tryRegular:
 					goto tryAlternateDoesExist;
 				}
 
-notFound:
 				return std::unexpected(Error::FILE_UNREADABLE);
-			}
+			});
 
 			// Ok, found file.
-			effectiveFilePointer.sclust = activeDeserializer->readFIL.obj.sclust;
-			effectiveFilePointer.objsize = activeDeserializer->readFIL.obj.objsize;
+			effectiveFilePointer.sclust = activeDeserializer->file.inner().obj.sclust;
+			effectiveFilePointer.objsize = activeDeserializer->file.inner().obj.objsize;
 		}
 	}
 

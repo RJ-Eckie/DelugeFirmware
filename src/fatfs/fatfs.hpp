@@ -43,21 +43,23 @@ public:
    * @retval false Successfully mounted, but not yet ready
    * @return std::expected<bool, Error> Error if mount failure
    */
-  std::expected<bool, Error> mount(BYTE opt, char const* path = "");
+  std::expected<bool, Error> mount(BYTE opt, const char* path = "");
 };
 
 using FileAccessMode = uint8_t;
 
 class File {
 public:
-  File(File &) = default;  // Copy constructor
-  File(File &&) = default; // Move constructor
-  File &operator=(File const &other) = default;
-
   ~File() { f_close(&file_); }
 
   /* Open or create a file */
   static std::expected<File, Error> open(std::string_view path,
+                                         FileAccessMode mode);
+
+  static std::expected<File, Error> open(const std::string& path,
+                                         FileAccessMode mode);
+
+  static std::expected<File, Error> open(const char* path,
                                          FileAccessMode mode);
 
   /* Close an open file object */
@@ -117,7 +119,7 @@ public:
   FIL &inner() { return file_; }
 
 private:
-  File() = default;
+  //File() = default;
 
   FIL file_;
 };
@@ -130,7 +132,15 @@ public:
 
   /* Open a directory */
   [[nodiscard]] static std::expected<Directory, Error>
+  open(const char* path);
+
+  /* Open a directory */
+  [[nodiscard]] static std::expected<Directory, Error>
   open(std::string_view path);
+
+    /* Open a directory */
+  [[nodiscard]] static std::expected<Directory, Error>
+  open(const std::string& path);
 
   /* Close an open directory */
   std::expected<void, Error> close();
@@ -163,32 +173,47 @@ private:
 
   DIR dir_;
 
+  friend std::expected<Directory, Error> mkdir_and_open(const char* path);
   friend std::expected<Directory, Error> mkdir_and_open(std::string_view path);
+  friend std::expected<Directory, Error> mkdir_and_open(const std::string& path);
 };
 
 /* Create a sub directory */
+std::expected<void, Error> mkdir(const char* path);
 std::expected<void, Error> mkdir(std::string_view path);
+std::expected<void, Error> mkdir(const std::string& path);
 
+std::expected<Directory, Error> mkdir_and_open(const char* path);
 std::expected<Directory, Error> mkdir_and_open(std::string_view path);
+std::expected<Directory, Error> mkdir_and_open(const std::string& path);
 
 #if FF_FS_READONLY == 0 and FF_FS_MINIMIZE == 0
 /* Delete an existing file or directory */
+std::expected<void, Error> unlink(const char* path);
 std::expected<void, Error> unlink(std::string_view path);
+std::expected<void, Error> unlink(const std::string& path);
 
 /* Rename/Move a file or directory */
-std::expected<void, Error> rename(std::string_view path_old,
-                                  std::string_view path_new);
+std::expected<void, Error> rename(const char* path_old, const char* path_new);
+std::expected<void, Error> rename(std::string_view path_old, std::string_view path_new);
+std::expected<void, Error> rename(const std::string& path_old, const std::string& path_new);
 
 /* Get file status */
+std::expected<FileInfo, Error> stat(const char* path);
 std::expected<FileInfo, Error> stat(std::string_view path);
+std::expected<FileInfo, Error> stat(const std::string& path);
 #endif
 
 #if FF_USE_CHMOD
 /* Change attribute of a file/dir */
+std::expected<void, Error> chmod(const char* path, BYTE attr, BYTE mask);
 std::expected<void, Error> chmod(std::string_view path, BYTE attr, BYTE mask);
+std::expected<void, Error> chmod(const std::string& path, BYTE attr, BYTE mask);
 
 /* Change timestamp of a file/dir */
+std::expected<void, Error> utime(const char* path, const FILINFO *fno);
 std::expected<void, Error> utime(std::string_view path, const FILINFO *fno);
+std::expected<void, Error> utime(const std::string& path, const FILINFO *fno);
 #endif
 
 #if FF_FS_RPATH >= 1

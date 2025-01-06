@@ -58,6 +58,7 @@
 #include "util/firmware_version.h"
 #include "util/functions.h"
 #include "util/misc.h"
+#include "util/try.h"
 
 namespace params = deluge::modulation::params;
 
@@ -3332,8 +3333,8 @@ Error Sound::readSourceFromFile(Deserializer& reader, int32_t s, ParamManagerFor
 				return Error::INSUFFICIENT_RAM;
 			}
 
-			reader.readTagOrAttributeValueString(&range->getAudioFileHolder()->filePath);
-
+			range->getAudioFileHolder()->filePath =
+			    D_TRY_CATCH(reader.readTagOrAttributeValueString(), error, { return Error::FILE_UNREADABLE; });
 			reader.exitTag("fileName");
 		}
 		else if (!strcmp(tagName, "zone")) {
@@ -3412,7 +3413,8 @@ Error Sound::readSourceFromFile(Deserializer& reader, int32_t s, ParamManagerFor
 					while (*(tagName = reader.readNextTagOrAttributeName())) {
 
 						if (!strcmp(tagName, "fileName")) {
-							reader.readTagOrAttributeValueString(&holder->filePath);
+							holder->filePath = D_TRY_CATCH(reader.readTagOrAttributeValueString(), error,
+							                               { return Error::FILE_UNREADABLE; });
 							reader.exitTag("fileName");
 						}
 						else if (!strcmp(tagName, "rangeTopNote")) {

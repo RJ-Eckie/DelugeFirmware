@@ -42,7 +42,9 @@
 #include "util/functions.h"
 #include "util/try.h"
 #include "version.h"
-#include <string.h>
+#include <algorithm>
+#include <cstring>
+#include <string_view>
 
 extern "C" {
 #include "RZA1/oled/oled_low_level.h"
@@ -72,9 +74,7 @@ Serializer& GetSerializer() {
 	if (writeJsonFlag) {
 		return smJsonSerializer;
 	}
-	else {
-		return smSerializer;
-	}
+	return smSerializer;
 }
 
 extern void initialiseConditions();
@@ -90,7 +90,7 @@ Error StorageManager::checkSpaceOnCard() {
 }
 
 // Creates folders and subfolders as needed!
-std::expected<FatFS::File, Error> StorageManager::createFile(char const* filePath, bool mayOverwrite) {
+std::expected<FatFS::File, Error> StorageManager::createFile(std::string_view filePath, bool mayOverwrite) {
 
 	Error error = initSD();
 	if (error != Error::NONE) {
@@ -173,7 +173,7 @@ cutFolderPathAndTryCreating:
 	return opened.value();
 }
 
-Error StorageManager::createXMLFile(char const* filePath, XMLSerializer& writer, bool mayOverwrite,
+Error StorageManager::createXMLFile(std::string_view filePath, XMLSerializer& writer, bool mayOverwrite,
                                     bool displayErrors) {
 	auto created = createFile(filePath, mayOverwrite);
 	writer.reset();
@@ -184,7 +184,7 @@ Error StorageManager::createXMLFile(char const* filePath, XMLSerializer& writer,
 		}
 		return created.error();
 	}
-	writer.writeFIL = created.value().inner();
+	writer.file = created.value();
 	writer.reset();
 	if (!writeJsonFlag) {
 		writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -203,19 +203,18 @@ Error StorageManager::createJsonFile(char const* filePath, JsonSerializer& write
 		}
 		return created.error();
 	}
-	writer.writeFIL = created.value().inner();
+	writer.file = created.value();
 	writer.reset();
 	return Error::NONE;
 }
 
-bool StorageManager::fileExists(char const* pathName) {
+bool StorageManager::fileExists(std::string_view pathName) {
 	Error error = initSD();
 	if (error != Error::NONE) {
 		return false;
 	}
 
-	FRESULT result = f_stat(pathName, &staticFNO);
-	return (result == FR_OK);
+	return FatFS::stat(pathName).has_value();
 }
 
 // Lets you get the FilePointer for the file.
@@ -284,15 +283,15 @@ void StorageManager::openFilePointer(FilePointer* fp, FileReader& reader) {
 
 	D_PRINTLN("openFilePointer");
 
-	reader.readFIL.obj.sclust = fp->sclust;
-	reader.readFIL.obj.objsize = fp->objsize;
-	reader.readFIL.obj.fs = &fileSystem; /* Validate the file object */
-	reader.readFIL.obj.id = fileSystem.id;
+	reader.file.inner().obj.sclust = fp->sclust;
+	reader.file.inner().obj.objsize = fp->objsize;
+	reader.file.inner().obj.fs = &fileSystem; /* Validate the file object */
+	reader.file.inner().obj.id = fileSystem.id;
 
-	reader.readFIL.flag = FA_READ; /* Set file access mode */
-	reader.readFIL.err = 0;        /* Clear error flag */
-	reader.readFIL.sect = 0;       /* Invalidate current data sector */
-	reader.readFIL.fptr = 0;       /* Set file pointer top of the file */
+	reader.file.inner().flag = FA_READ; /* Set file access mode */
+	reader.file.inner().err = 0;        /* Clear error flag */
+	reader.file.inner().sect = 0;       /* Invalidate current data sector */
+	reader.file.inner().fptr = 0;       /* Set file pointer top of the file */
 }
 
 Error StorageManager::openInstrumentFile(OutputType outputType, FilePointer* filePointer) {
@@ -654,8 +653,9 @@ Error StorageManager::openJsonFile(FilePointer* filePointer, JsonDeserializer& r
 	openFilePointer(filePointer, reader);
 	Error err = reader.openJsonFile(filePointer, firstTagName, altTagName, ignoreIncorrectFirmware);
 	activeDeserializer = &reader;
-	if (err == Error::NONE)
+	if (err == Error::NONE) {
 		return Error::NONE;
+	}
 	reader.closeWriter();
 
 	return Error::FILE_CORRUPTED;
@@ -715,17 +715,15 @@ FileReader::FileReader() {
 
 // Used to read an in-memory file stream.
 // Caller 'owns' the memBuffer.
-FileReader::FileReader(char* memBuffer, uint32_t bufLen) {
-	fileClusterBuffer = memBuffer;
-	currentReadBufferEndPos = bufLen;
-	memoryBased = true;
-	callRoutines = false;
-	fileReadBufferCurrentPos = 0;
+FileReader::FileReader(std::span<std::byte> buffer)
+    : fileClusterBuffer(reinterpret_cast<char*>(buffer.data())), currentReadBufferEndPos(buffer.size_bytes()),
+      fileReadBufferCurrentPos(0), callRoutines(false), memoryBased(true) {
 }
 
 FileReader::~FileReader() {
-	if (!memoryBased)
+	if (!memoryBased) {
 		GeneralMemoryAllocator::get().dealloc(fileClusterBuffer);
+	}
 }
 
 void FileReader::resetReader() {
@@ -774,13 +772,12 @@ bool FileReader::readFileCluster() {
 		return true;
 	}
 
-	FRESULT result = f_read(&readFIL, (UINT*)fileClusterBuffer, Cluster::size, &currentReadBufferEndPos);
-	if (result) {
-		return false;
-	}
+	auto read = D_TRY_CATCH(file.read({reinterpret_cast<std::byte*>(fileClusterBuffer), Cluster::size}), error,
+	                        { return false; });
+	currentReadBufferEndPos = read.size();
 
 	// If error or we reached end of file
-	if (!currentReadBufferEndPos) {
+	if (currentReadBufferEndPos == 0u) {
 		return false;
 	}
 
@@ -821,8 +818,10 @@ bool FileReader::readChar(char* thisChar) {
 void FileReader::readDone() {
 	readCount++; // Increment first, cos we don't want to call SD routine immediately when it's 0
 
-	if (!callRoutines)
+	if (!callRoutines) {
 		return;
+	}
+
 	if (!(readCount & 63)) { // 511 bad. 255 almost fine. 127 almost always fine
 		AudioEngine::routineWithClusterLoading();
 
@@ -836,16 +835,15 @@ void FileReader::readDone() {
 }
 
 FRESULT FileReader::closeWriter() {
-	if (!memoryBased)
-		return f_close(&readFIL);
-	else
-		return FRESULT::FR_OK;
+	if (!memoryBased) {
+		file.close();
+	}
+	return FRESULT::FR_OK;
 }
 
-FileWriter::FileWriter() {
-	bufferSize = 32768;
+FileWriter::FileWriter() : bufferSize(32768) {
 	void* temp = GeneralMemoryAllocator::get().allocLowSpeed(bufferSize + CACHE_LINE_SIZE * 2);
-	writeClusterBuffer = (char*)temp + CACHE_LINE_SIZE;
+	writeClusterBuffer = (std::byte*)temp + CACHE_LINE_SIZE;
 }
 
 FileWriter::FileWriter(bool inMem) : FileWriter() {
@@ -866,28 +864,26 @@ void FileWriter::resetWriter() {
 	fileAccessFailedDuringWrite = false;
 }
 
-FRESULT FileWriter::closeWriter() {
+std::expected<void, FatFS::Error> FileWriter::closeWriter() {
 	if (memoryBased) {
 		if (fileWriteBufferCurrentPos < bufferSize) {
-			writeClusterBuffer[fileWriteBufferCurrentPos] = 0;
-			return FRESULT::FR_OK;
+			writeClusterBuffer[fileWriteBufferCurrentPos] = std::byte{0};
+			return {};
 		}
-		else {
-			return FRESULT::FR_INT_ERR;
-		}
+		return std::unexpected{FatFS::Error::INT_ERR};
 	}
-	return f_close(&writeFIL);
+	return file.close();
 }
 
-void FileWriter::writeBlock(uint8_t* block, uint32_t size) {
-	for (uint32_t ix = 0; ix < size; ++ix) {
-		writeByte(block[ix]);
+void FileWriter::writeBlock(std::span<std::byte> block) {
+	for (std::byte b : block) {
+		writeByte(b);
 	}
 }
 
 extern "C" void routineForSD(void);
 
-void FileWriter::writeByte(int8_t b) {
+void FileWriter::writeByte(std::byte b) {
 
 	if (fileWriteBufferCurrentPos == bufferSize) {
 		if (!memoryBased && !fileAccessFailedDuringWrite) {
@@ -912,17 +908,15 @@ void FileWriter::writeByte(int8_t b) {
 		routineForSD();
 	}
 }
-void FileWriter::writeChars(char const* output) {
-	while (*output) {
-		writeByte(*output);
-		output++;
+void FileWriter::writeChars(std::string_view output) {
+	for (char c : output) {
+		writeByte(std::byte(c));
 	}
 }
 
 Error FileWriter::writeBufferToFile() {
-	UINT bytesWritten;
-	FRESULT result = f_write(&writeFIL, writeClusterBuffer, fileWriteBufferCurrentPos, &bytesWritten);
-	if (result != FR_OK || bytesWritten != fileWriteBufferCurrentPos) {
+	auto writen = file.write({writeClusterBuffer, fileWriteBufferCurrentPos});
+	if (!writen || *writen != fileWriteBufferCurrentPos) {
 		return Error::SD_CARD;
 	}
 
@@ -932,71 +926,65 @@ Error FileWriter::writeBufferToFile() {
 }
 
 // Returns false if some error, including error while writing
-Error FileWriter::closeAfterWriting(char const* path, char const* beginningString, char const* endString) {
+Error FileWriter::closeAfterWriting(std::optional<std::string_view> path,
+                                    std::optional<std::string_view> beginningString,
+                                    std::optional<std::string_view> endString) {
 
 	if (fileAccessFailedDuringWrite) {
 		return Error::WRITE_FAIL; // Calling f_close if this is false might be dangerous - if access has failed, we
 		                          // don't want it to flush any data to the card or anything
 	}
-	if (memoryBased)
+	if (memoryBased) {
 		return Error::NONE;
+	}
+
 	Error error = writeBufferToFile();
 	if (error != Error::NONE) {
 		return Error::WRITE_FAIL;
 	}
 
-	FRESULT result = closeWriter();
-	if (result) {
+	auto closed = closeWriter();
+	if (!closed) {
 		return Error::WRITE_FAIL;
 	}
 
 	if (path) {
 		// Check file exists
-		result = f_open(&writeFIL, path, FA_READ);
-		if (result) {
-			return Error::WRITE_FAIL;
-		}
+		file = D_TRY_CATCH(FatFS::File::open(*path, FA_READ), error, { return Error::WRITE_FAIL; });
 	}
 
 	// Check size
-	if (f_size(&writeFIL) != fileTotalBytesWritten) {
+	if (file.size() != fileTotalBytesWritten) {
 		return Error::WRITE_FAIL;
 	}
 
 	// Check beginning
 	if (beginningString) {
-		UINT dontCare;
-		int32_t length = strlen(beginningString);
-		result = f_read(&writeFIL, miscStringBuffer, length, &dontCare);
-		if (result) {
-			return Error::WRITE_FAIL;
-		}
-		if (memcmp(miscStringBuffer, beginningString, length)) {
+		size_t length = beginningString->length();
+		auto read_buffer = D_TRY_CATCH(file.read({reinterpret_cast<std::byte*>(miscStringBuffer), length}), error, {
+			return Error::WRITE_FAIL; //<
+		});
+		if (memcmp(miscStringBuffer, beginningString->data(), length) != 0) {
 			return Error::WRITE_FAIL;
 		}
 	}
 
 	// Check end
 	if (endString) {
-		UINT dontCare;
-		int32_t length = strlen(endString);
+		size_t length = endString->length();
 
-		result = f_lseek(&writeFIL, fileTotalBytesWritten - length);
-		if (result) {
-			return Error::WRITE_FAIL;
-		}
+		D_TRY_CATCH(file.lseek(fileTotalBytesWritten - length), error, { return Error::WRITE_FAIL; });
 
-		result = f_read(&writeFIL, miscStringBuffer, length, &dontCare);
-		if (result) {
-			return Error::WRITE_FAIL;
-		}
-		if (memcmp(miscStringBuffer, endString, length)) {
+		auto read_buffer = D_TRY_CATCH(file.read({reinterpret_cast<std::byte*>(miscStringBuffer), length}), error, {
+			return Error::WRITE_FAIL; //<
+		});
+		if (memcmp(miscStringBuffer, endString->data(), length) != 0) {
 			return Error::WRITE_FAIL;
 		}
 	}
 
-	result = closeWriter();
-	if (result) {
+	closed = closeWriter();
+	if (!closed) {
 		return Error::WRITE_FAIL;
 	}
 

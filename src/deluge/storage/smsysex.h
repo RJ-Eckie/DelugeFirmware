@@ -28,7 +28,7 @@ void writeBlock(MIDICable& cable, JsonDeserializer& reader);
 void getDirEntries(MIDICable& cable, JsonDeserializer& reader);
 void deleteFile(MIDICable& cable, JsonDeserializer& reader);
 void createDirectory(MIDICable& cable, JsonDeserializer& reader);
-FRESULT createPathDirectories(String& path, uint32_t date, uint32_t time);
+FRESULT createPathDirectories(std::string_view, uint32_t date, uint32_t time);
 void rename(MIDICable& cable, JsonDeserializer& reader);
 void updateTime(MIDICable& cable, JsonDeserializer& reader);
 void assignSession(MIDICable& cable, JsonDeserializer& reader);
